@@ -1,0 +1,6 @@
+# 唯音配置助手（WebConfigAssistant）——建置產物與暫存，皆不入庫。
+node_modules/
+dist/
+tmp/
+*.local
+package-lock.json
