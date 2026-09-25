@@ -12,7 +12,7 @@ Specification:
 
 ## Current phase
 
-**Pre-development baseline / environment setup — blocked on full Xcode 27**
+**Pre-development Mac baseline — build and package tests pass; install/CIN verification pending**
 
 No MixType hybrid engine implementation has started yet.
 
@@ -24,7 +24,7 @@ No MixType hybrid engine implementation has started yet.
 - Development workflow / multi-agent rules: ✅
 - WebCodex VPS managed project registered and synced to `origin/main`: ✅
 - macOS local clone under CoS Mac: ✅ (`~/Coding/MixType-macOS`)
-- clean upstream-derived Mac build baseline: ⚠️ partial; core `Vanguard` product builds locally, but the required full package tests and IME build are blocked because this Mac currently has Command Line Tools 27 only, not full Xcode 27
+- clean upstream-derived Mac build baseline: ⚠️ partial; full Xcode 27 is installed, LibVanguard package tests pass, and both Debug app bundles build and validate; real IME installation and CIN typing remain unverified
 - real IME installation baseline: ⬜
 - real CIN/Boshiamy cassette baseline: ⬜
 - V0.1 feature branch: ⬜
@@ -36,31 +36,30 @@ No MixType hybrid engine implementation has started yet.
 
 - Host: macOS 26.6.2 (25G83), Apple Silicon `arm64`, Apple M4 Pro.
 - Swift: Apple Swift 6.4 (`swiftlang-6.4.0.34.1`), satisfying the repository's Swift 6.4 minimum.
-- Active developer directory: `/Library/Developer/CommandLineTools`.
-- Full Xcode: not found in `/Applications` or Spotlight; `xcodebuild -version` therefore cannot run.
-- Fork reconciliation: `origin/main` at `9d04b724cb9e64b2a953012f5e54bd6cec3cbb37`; upstream base at `62936e41e9319dce482a291bf13b6bfaa194c6f7`. The fork is seven documentation commits ahead and zero commits behind upstream.
+- Active developer directory: `/Applications/Xcode.app/Contents/Developer`.
+- Full Xcode: Xcode 27.0, build `27A266a`; macOS 27 SDK is available. `xcodebuild -checkFirstLaunchStatus` passes.
+- Fork reconciliation: local `main` and `origin/main` both at `3164ca66273f30fbbe8b8e82dd9961b65a35a80d`; upstream base remains `62936e41e9319dce482a291bf13b6bfaa194c6f7`.
 - Local core build: `swift build -c debug --product Vanguard` from `Packages/vChewing_OSNeutral_LibVanguard` — **PASS**.
-- Local LibVanguard test command: `make test` — **BLOCKED by environment** before tests execute because Command Line Tools lacks `FoundationMacros.BundleMacro` required by `#bundle` in the test-material target.
-- Local root SwiftPM debug build: `make spmDebug` — **BLOCKED by environment** because Command Line Tools lacks `PreviewsMacros` used by AppKit/SwiftUI preview macros.
-- Local targeted IME product build: `swift build -c debug --product vChewing` — **BLOCKED by the same missing `PreviewsMacros` plugin**.
+- Local LibVanguard tests: `make test` from `Packages/vChewing_OSNeutral_LibVanguard` — **PASS**.
+- Local root SwiftPM debug build: `make spmDebug` — **PASS**.
+- Local Debug app bundle assembly: `make debug` — **PASS** for both `vChewing.app` and `vChewingInstaller.app`; both pass strict codesign verification and Info.plist lint.
+- Running `make test` at the repository root stops at `swift test --no-parallel` with `no tests found`; use the LibVanguard package test command above for the current package-test gate.
 - Upstream CI for the shared code base `62936e41e9319dce482a291bf13b6bfaa194c6f7`: Linux LibVanguard, Windows LibVanguard, and macOS SPM tests/package workflows all completed successfully. This supports that the observed local failures are toolchain-environment failures rather than known source regressions.
-- No IME installation, OpenVanilla coexistence, private CIN loading, or real cassette typing test was attempted because the build/test baseline gate has not passed locally.
+- No IME installation, OpenVanilla coexistence, private CIN loading, or real cassette typing test has been performed yet.
 
-## Planning completed while Mac baseline is blocked
+## Planning completed before implementation
 
 - Phase A exact preference/routing/typewriter/test touchpoints have been audited read-only.
-- Phase A is intentionally not implemented until the full-Xcode Mac baseline gate passes.
+- Phase A is intentionally not implemented until the IME installation, coexistence, and CIN typing baseline gates pass.
 - V0.2 Personal Lexicon architecture, reading resolution, auto-promotion policy, persistence, ranking and acceptance tests are now specified.
 
 ## Required next steps
 
-1. Install full Xcode 27 compatible with macOS 26.6.2, then select its developer directory with `xcode-select` and verify `xcodebuild -version`.
-2. Re-run the baseline commands, including LibVanguard package tests and the repo-recommended debug app build, without changing deployment targets or bypassing macro failures.
-3. Produce/install the baseline IME and verify that it coexists with OpenVanilla without deleting or overwriting OpenVanilla.
-4. Verify baseline cassette/CIN behavior with a local private CIN file without committing that file.
-5. Only after those gates pass, create and switch to:
+1. Install the baseline IME and verify that it coexists with OpenVanilla without deleting or overwriting OpenVanilla.
+2. Verify baseline cassette/CIN behavior with a local private CIN file without committing that file.
+3. Only after those gates pass, create and switch to:
    `feat/hybrid-input-v01`.
-6. Begin V0.1 Phase A.
+4. Begin V0.1 Phase A.
 
 ## V0.1 phase checklist
 
@@ -105,7 +104,7 @@ No MixType hybrid engine implementation has started yet.
 
 ## Current blockers
 
-Full Xcode 27 is not currently installed/discoverable on the Mac. The installed Command Line Tools provide Swift 6.4 but omit Apple macro plugins needed by this repository's tests and macOS UI targets (`FoundationMacros` / `PreviewsMacros`). Per the baseline gate, Phase A must not begin until the required local Mac baseline is rerun successfully with full Xcode.
+The build/test environment blocker is resolved with full Xcode 27. Per the baseline gate, Phase A must wait until the IME is installed and verified alongside OpenVanilla, and cassette/CIN typing has been tested with a private local CIN file.
 
 ## Handoff template
 
