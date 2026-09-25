@@ -43,6 +43,8 @@ public final class SessionHost {
   public var savePerceptionOverrideModelData: () -> () = {}
   /// 儲存 MixType Personal Lexicon。參數為當前 LXFacade 是否為簡體模式。
   public var savePersonalLexiconData: (_ isCHS: Bool) -> () = { _ in }
+  /// 儲存 MixType Auto Promotion pending observations。參數為當前 LXFacade 是否為簡體模式。
+  public var savePersonalLexiconPromotionData: (_ isCHS: Bool) -> () = { _ in }
   /// 直接寫入使用者語彙。
   public var writeUserPhrasesAtOnce: (_ phrase: UserPhraseInsertable, _ areWeFiltering: Bool) -> Bool =
     { _, _ in false }

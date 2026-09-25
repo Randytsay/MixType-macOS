@@ -156,6 +156,46 @@
 
         Section("i18n:MixType.PersonalLexicon.section".i18n) {
           VwrPersonalLexiconManager()
+
+          Divider()
+
+          VStack(alignment: .leading, spacing: 8) {
+            Toggle(
+              "i18n:MixType.AutoPromotion.enabled".i18n,
+              isOn: $mixTypeAutoPromotionEnabled
+            )
+
+            Toggle(
+              "i18n:MixType.EnglishIntent.enabled".i18n,
+              isOn: $mixTypeEnglishIntentEnabled
+            )
+
+            HStack {
+              Text("i18n:MixType.AutoPromotion.threshold".i18n)
+              Spacer()
+              Stepper(
+                value: $mixTypeAutoPromotionThreshold,
+                in: 2 ... 20,
+                step: 1
+              ) {
+                Text(
+                  String(
+                    format: "i18n:MixType.AutoPromotion.thresholdValue:%d".i18n,
+                    mixTypeAutoPromotionThreshold
+                  )
+                )
+                .monospacedDigit()
+              }
+              .fixedSize()
+            }
+            .disabled(!mixTypeAutoPromotionEnabled)
+
+            Text("i18n:MixType.AutoPromotion.help".i18n)
+              .settingsDescription()
+
+            Text("i18n:MixType.EnglishIntent.help".i18n)
+              .settingsDescription()
+          }
         }
 
         Section {
@@ -263,6 +303,24 @@
 
     @AppStorage(wrappedValue: "", UserDef.kUserDataFolderSpecified.rawValue)
     private var userDataFolderSpecified: String
+
+    @AppStorage(
+      wrappedValue: UserDef.kMixTypeAutoPromotionEnabled.boolDefaultValue,
+      UserDef.kMixTypeAutoPromotionEnabled.rawValue
+    )
+    private var mixTypeAutoPromotionEnabled: Bool
+
+    @AppStorage(
+      wrappedValue: UserDef.kMixTypeAutoPromotionThreshold.intDefaultValue,
+      UserDef.kMixTypeAutoPromotionThreshold.rawValue
+    )
+    private var mixTypeAutoPromotionThreshold: Int
+
+    @AppStorage(
+      wrappedValue: UserDef.kMixTypeEnglishIntentEnabled.boolDefaultValue,
+      UserDef.kMixTypeEnglishIntentEnabled.rawValue
+    )
+    private var mixTypeEnglishIntentEnabled: Bool
 
     // MARK: - Main View
 

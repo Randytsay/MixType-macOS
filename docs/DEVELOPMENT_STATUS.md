@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.2 Batch A complete in code — Personal Lexicon product UI + Base Input Provider abstraction**
+**V0.2 Batch B complete in code — Auto Promotion + conservative English intent**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -23,6 +23,10 @@ Batch A productizes that foundation: the modern Settings UI can manage Personal 
 import/export native JSON, and switch the MixType base input provider among Zhuyin, Pinyin, and CIN.
 Native Zhuyin/Pinyin Homa paths can now consume Personal Lexicon entries without changing upstream
 LM/POM ordering; CIN continues to use the validated Hybrid path.
+Batch B adds persistent explicit-selection observations, threshold-based automatic promotion into the
+Personal Lexicon, user-visible learning controls, and a conservative English-intent filter that suppresses
+only factory-abbreviation-only collisions for English-shaped raw tokens while preserving CIN, Personal,
+and full-Pinyin matches.
 
 ## Repository state
 
@@ -57,6 +61,12 @@ LM/POM ordering; CIN continues to use the validated Hybrid path.
 - Settings UI base-provider switch with CIN validity guard: ✅
 - Native Zhuyin/Pinyin Homa can consume Personal Lexicon while preserving upstream gram/POM ordering: ✅
 - MixType Settings localization: English / Traditional Chinese / Simplified Chinese / Japanese: ✅
+- Auto Promotion pending-observation model + versioned JSON persistence: ✅
+- explicit candidate selection hook for Hybrid/native phonetic paths; previews/cancel do not count: ✅
+- default auto-promotion threshold 3, configurable 2...20, with Settings UI controls: ✅
+- promotion uses the candidate's actual selected reading and promotes exactly once: ✅
+- conservative English-intent preference: suppress factory-abbreviation-only collisions for English-shaped tokens: ✅
+- English intent keeps stronger Chinese sources (CIN / Personal / full Pinyin) intact: ✅
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -90,10 +100,10 @@ LM/POM ordering; CIN continues to use the validated Hybrid path.
 
 ## Required next steps
 
-1. Commit/push/install Batch A and verify the new Personal Lexicon manager plus base-provider selector on the Mac.
-2. Implement Batch B auto-promotion: explicit selection observation → pending count → threshold promotion to Personal Lexicon.
-3. Reuse MixedAlphanumerical intent heuristics so ordinary English words do not surface accidental Chinese abbreviation candidates by default.
-4. Add auto-learning controls/threshold to Settings and complete Mac E2E for Zhuyin/Pinyin/CIN provider switching.
+1. Install Batch B and verify Auto Promotion controls, `space` English preference, and the existing `tdny` Personal/factory coexistence on the Mac.
+2. Verify a real three-selection promotion workflow and restart persistence of pending counts / promoted entries.
+3. Complete Mac E2E for Zhuyin / Pinyin / CIN base-provider switching and Personal Lexicon CRUD UI.
+4. Continue V0.3 mixed-token segmentation only after the V0.2 product surfaces are runtime-accepted.
 
 ## V0.2 implementation status
 
@@ -120,8 +130,11 @@ LM/POM ordering; CIN continues to use the validated Hybrid path.
 - [x] native Zhuyin/Pinyin Personal Lexicon Homa integration
 - [ ] installed-Mac E2E for `Shift+2 → @`
 - [ ] installed-Mac E2E for English override and `tdny` activation reload
-- [ ] auto-promotion after explicit selections
-- [ ] broader English-intent reuse from MixedAlphanumerical heuristics
+- [x] auto-promotion after explicit selections
+- [x] auto-promotion pending JSON survives restart
+- [x] auto-learning enable/threshold Settings UI
+- [x] conservative English-intent filtering for abbreviation-only collisions
+- [ ] broader V0.3 English/Chinese token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens)
 
 ## V0.1 phase checklist
 
@@ -237,17 +250,34 @@ MixedAlphanumerical and Furious/POM semantics. Full LibVanguard tests pass after
 SettingsUI tests are 17/17 PASS, LXMgrTests are 22/22 PASS, all four localization files lint successfully,
 and `make debug` passes on Xcode 27 / Swift 6.4.
 
+Batch B implements the promotion lifecycle specified for V0.2. `PersonalLexiconPromotionStore` keeps
+pending observations separate from the long-term Personal Lexicon, keyed by phrase + actual selected
+reading. Only explicit candidate confirmations call the learning hook; merely showing a candidate does
+not increment the count. At the configured threshold (default 3, range 2...20) the phrase is promoted
+exactly once with `.autoPromoted` provenance and generated full-Pinyin/initials keys, then the pending
+observation is removed. Pending data and promoted Personal data are persisted independently and loaded
+at startup / input-source activation. The Dictionary settings pane exposes both the learning switch and
+threshold control.
+
+Batch B also adds a conservative English-intent preference (default on). Hybrid suppresses candidates
+only when the raw token has an English-like Latin shape and every remaining candidate is a factory Pinyin
+abbreviation. CIN exact/quick, Personal full/initials, and full-Pinyin matches are never hidden by this
+heuristic. This addresses accidental collisions such as ordinary English words surfacing abbreviation
+candidates while preserving intended shorthand such as `tdny`, `ysxb`, `jngsfa`, and existing explicit
+Enter / Shift+Space English overrides. Full LibVanguard tests pass, SettingsUI tests are 17/17 PASS,
+LXMgrTests are 23/23 PASS, all four localization files lint, and `make debug` passes.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: f2c10c8e plus Batch A working tree (commit pending)
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration
-Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 22/22 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: 9a35c0e9 plus Batch B working tree (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering
+Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 23/23 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
 Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS on the previous installed build; Batch A Settings/provider UI E2E pending installation
-Known issues: automatic promotion is not implemented yet; broad English-intent detection is not yet integrated into Hybrid; native Zhuyin/Pinyin provider switching is code/test complete but still needs real-Mac UI E2E
-Next unfinished item: commit/push/install Batch A, then implement Batch B auto-promotion and English-intent reuse
+Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching, Batch A Settings UI, Auto Promotion, and conservative English intent still need real-Mac E2E
+Next unfinished item: commit/push/install Batch B, verify real-Mac V0.2 workflows, then begin V0.3 token segmentation only after acceptance
 ```

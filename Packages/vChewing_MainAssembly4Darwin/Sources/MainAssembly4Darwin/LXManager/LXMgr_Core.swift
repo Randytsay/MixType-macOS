@@ -91,6 +91,7 @@ public final class LXMgr {
     // 所以這裡不需要特別處理。
     Self.loadUserPhrasesData()
     Self.loadPersonalLexiconData()
+    Self.loadPersonalLexiconPromotionData()
     // 就關聯詞語登記惰性載入器，會趁首次需要完成載入。
     LXAssembly.LXFacade.associatesLazyLoader = {
       if PrefMgr.shared.associatedPhrasesEnabled {
@@ -247,6 +248,42 @@ public final class LXMgr {
       withIntermediateDirectories: true
     )
     let data = try mode.lexicon.exportPersonalLexiconData()
+    try data.write(to: url, options: [.atomic])
+  }
+
+  /// 載入 MixType Auto Promotion pending observations。錯誤時保留既有記憶體內容。
+  public static func loadPersonalLexiconPromotionData(mode: Shared.InputMode? = nil) {
+    let targetModes = mode.map { [$0] } ?? Shared.InputMode.validCases
+    for targetMode in targetModes where targetMode != .imeModeNULL {
+      let url = personalLexiconPromotionDataURL(mode: targetMode)
+      guard FileManager.default.isReadableFile(atPath: url.path) else {
+        targetMode.lexicon.replacePersonalLexiconPromotionObservations([])
+        continue
+      }
+      do {
+        let data = try Data(contentsOf: url)
+        try targetMode.lexicon.loadPersonalLexiconPromotionData(data)
+      } catch {
+        vCLog("Personal Lexicon pending load failed at \(url.path): \(error.localizedDescription)")
+      }
+    }
+  }
+
+  public static func ensurePersonalLexiconPromotionLoaded(mode: Shared.InputMode) {
+    guard mode != .imeModeNULL, mode.lexicon.personalLexiconPromotionObservations.isEmpty else { return }
+    let url = personalLexiconPromotionDataURL(mode: mode)
+    guard FileManager.default.isReadableFile(atPath: url.path) else { return }
+    loadPersonalLexiconPromotionData(mode: mode)
+  }
+
+  public static func savePersonalLexiconPromotionData(mode: Shared.InputMode) throws {
+    guard mode != .imeModeNULL else { return }
+    let url = personalLexiconPromotionDataURL(mode: mode)
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(),
+      withIntermediateDirectories: true
+    )
+    let data = try mode.lexicon.exportPersonalLexiconPromotionData()
     try data.write(to: url, options: [.atomic])
   }
 

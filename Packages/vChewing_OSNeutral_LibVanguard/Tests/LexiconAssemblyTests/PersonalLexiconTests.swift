@@ -165,4 +165,76 @@ struct PersonalLexiconTests {
     #expect(reordered.first?.entry.selectionCount == 1)
     #expect(reordered.first?.entry.lastUsedAt == learnedDate)
   }
+
+  @Test
+  func testPersonalLexiconPromotionStoreCountsOnlyToThreshold() throws {
+    let store = LXAssembly.PersonalLexiconPromotionStore()
+    let readings = ["ㄘㄞˋ", "ㄧㄠˋ", "ㄨㄣˊ"]
+    let t1 = Date(timeIntervalSince1970: 1_700_000_000)
+    let t2 = Date(timeIntervalSince1970: 1_700_000_100)
+    let t3 = Date(timeIntervalSince1970: 1_700_000_200)
+
+    #expect(store.observe(phrase: "蔡耀文", readings: readings, threshold: 3, now: t1) == .pending(count: 1))
+    #expect(store.observe(phrase: "蔡耀文", readings: readings, threshold: 3, now: t2) == .pending(count: 2))
+    let third = store.observe(phrase: "蔡耀文", readings: readings, threshold: 3, now: t3)
+    guard case let .thresholdReached(observation) = third else {
+      Issue.record("Third explicit selection must reach promotion threshold.")
+      return
+    }
+    #expect(observation.selectionCount == 3)
+    #expect(observation.firstSelectedAt == t1)
+    #expect(observation.lastSelectedAt == t3)
+  }
+
+  @Test
+  func testPersonalLexiconPromotionJSONRoundTrip() throws {
+    let store = LXAssembly.PersonalLexiconPromotionStore()
+    _ = store.observe(
+      phrase: "蔡耀文",
+      readings: ["ㄘㄞˋ", "ㄧㄠˋ", "ㄨㄣˊ"],
+      threshold: 3,
+      now: Date(timeIntervalSince1970: 1_700_000_000)
+    )
+    let restored = LXAssembly.PersonalLexiconPromotionStore()
+    try restored.load(data: store.encode())
+    #expect(restored.observations == store.observations)
+  }
+
+  @Test
+  func testPersonalLexiconFacadePromotesExactlyOnceUsingActualReadings() throws {
+    let facade = LXAssembly.LXFacade()
+    let readings = ["ㄘㄞˋ", "ㄧㄠˋ", "ㄨㄣˊ"]
+    let base = Date(timeIntervalSince1970: 1_700_000_000)
+
+    #expect(
+      facade.observePersonalLexiconPromotion(
+        phrase: "蔡耀文", readings: readings, threshold: 3, now: base
+      ) == .pending(count: 1)
+    )
+    #expect(
+      facade.observePersonalLexiconPromotion(
+        phrase: "蔡耀文", readings: readings, threshold: 3, now: base.addingTimeInterval(10)
+      ) == .pending(count: 2)
+    )
+    let third = facade.observePersonalLexiconPromotion(
+      phrase: "蔡耀文", readings: readings, threshold: 3, now: base.addingTimeInterval(20)
+    )
+    guard case let .promoted(entry) = third else {
+      Issue.record("Third explicit selection must auto-promote.")
+      return
+    }
+    #expect(entry.source == .autoPromoted)
+    #expect(entry.fullPinyinKey == "caiyaowen")
+    #expect(entry.initialsKey == "cyw")
+    #expect(entry.selectionCount == 3)
+    #expect(facade.personalLexiconPromotionObservations.isEmpty)
+    #expect(facade.personalLexiconEntries.count == 1)
+
+    #expect(
+      facade.observePersonalLexiconPromotion(
+        phrase: "蔡耀文", readings: readings, threshold: 3, now: base.addingTimeInterval(30)
+      ) == .alreadyPersonal
+    )
+    #expect(facade.personalLexiconEntries.count == 1)
+  }
 }

@@ -650,3 +650,15 @@
 "i18n:MixType.PersonalLexicon.disabled" = "この語句を無効化";
 "i18n:MixType.PersonalLexicon.autoDerive" = "追加後、読み・Pinyin・略記をすべてローカルで自動生成します。";
 "i18n:MixType.PersonalLexicon.save" = "保存";
+"i18n:MixType.AutoPromotion.enabled" = "よく選ぶ語句を自動学習";
+"i18n:MixType.AutoPromotion.threshold" = "Personal Lexicon への昇格しきい値";
+"i18n:MixType.AutoPromotion.thresholdValue:%d" = "%d 回選択";
+"i18n:MixType.AutoPromotion.help" = "明示的に確定した中国語候補だけを数えます。表示・プレビュー・キャンセルは数えません。しきい値に達すると、実際に選択した読みで永続的な Personal Lexicon 項目を作成し、上の一覧から編集・無効化・削除できます。";
+"i18n:MixType.EnglishIntent.enabled" = "明らかな英単語を優先";
+"i18n:MixType.EnglishIntent.help" = "CIN、Personal Lexicon、完全な Pinyin の一致がなく、factory の略称候補だけと衝突する場合、space・hello・meeting のような英単語らしい入力を ASCII として優先します。Enter／Shift+Space の明示的な英語指定はそのまま利用できます。";
+"i18n:UserDef.kMixTypeAutoPromotionEnabled.shortTitle" = "よく選ぶ語句を自動学習";
+"i18n:UserDef.kMixTypeAutoPromotionEnabled.description" = "繰り返し明示的に選択した中国語語句を MixType Personal Lexicon に昇格します。";
+"i18n:UserDef.kMixTypeAutoPromotionThreshold.shortTitle" = "自動学習しきい値";
+"i18n:UserDef.kMixTypeAutoPromotionThreshold.description" = "同じ語句と実際の読みを何回明示的に選択すると Personal Lexicon に追加するかを指定します。";
+"i18n:UserDef.kMixTypeEnglishIntentEnabled.shortTitle" = "明らかな英単語を優先";
+"i18n:UserDef.kMixTypeEnglishIntentEnabled.description" = "より強い中国語ソースがない場合、英単語らしい略称衝突を ASCII として優先します。";

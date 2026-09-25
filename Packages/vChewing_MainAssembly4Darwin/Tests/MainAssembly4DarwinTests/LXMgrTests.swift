@@ -548,6 +548,37 @@ final class LXMgrTests {
     #expect(Set(exportedStore.entries.map(\.phrase)) == ["台達能源", "節能方案"])
   }
 
+  @Test
+  func test031_LXMgr_PersonalLexiconPromotionPendingSaveAndReload() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let url = LXMgr.personalLexiconPromotionDataURL(mode: mode)
+    defer {
+      mode.lexicon.replacePersonalLexiconPromotionObservations([])
+      try? FileManager.default.removeItem(at: url)
+    }
+
+    mode.lexicon.replacePersonalLexiconPromotionObservations([])
+    #expect(
+      mode.lexicon.observePersonalLexiconPromotion(
+        phrase: "蔡耀文",
+        readings: ["ㄘㄞˋ", "ㄧㄠˋ", "ㄨㄣˊ"],
+        threshold: 3,
+        now: Date(timeIntervalSince1970: 1_700_000_000)
+      ) == .pending(count: 1)
+    )
+    try LXMgr.savePersonalLexiconPromotionData(mode: mode)
+    #expect(FileManager.default.isReadableFile(atPath: url.path))
+
+    mode.lexicon.replacePersonalLexiconPromotionObservations([])
+    #expect(mode.lexicon.personalLexiconPromotionObservations.isEmpty)
+    LXMgr.loadPersonalLexiconPromotionData(mode: mode)
+
+    let restored = try #require(mode.lexicon.personalLexiconPromotionObservations.first)
+    #expect(restored.phrase == "蔡耀文")
+    #expect(restored.readings == ["ㄘㄞˋ", "ㄧㄠˋ", "ㄨㄣˊ"])
+    #expect(restored.selectionCount == 1)
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test

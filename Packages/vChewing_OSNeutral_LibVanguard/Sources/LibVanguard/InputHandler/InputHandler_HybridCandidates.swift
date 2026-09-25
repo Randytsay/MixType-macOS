@@ -110,6 +110,9 @@ extension InputHandlerProtocol {
       guard seenValues.insert(value).inserted else { continue }
       merged.append(offer)
     }
+    if shouldPreferHybridASCIIWord(rawKeys: rawKeys, offers: merged) {
+      return []
+    }
     return merged
   }
 
@@ -167,17 +170,34 @@ extension InputHandlerProtocol {
         return nil
       }
       return .commit(committableDisplayText(sansReading: true) + canonicalCandidate.value)
-    case .personalFullPinyin, .pinyinFull, .personalInitials, .pinyinAbbreviation:
+    case .personalFullPinyin, .personalInitials:
       guard confirmHybridPinyinCandidate(canonicalCandidate) else { return nil }
-      if let personalEntryID = offer.personalEntryID,
-         currentLM.recordPersonalLexiconSelection(id: personalEntryID) {
-        SessionHost.shared.savePersonalLexiconData(currentLM.isCHS)
-      }
+      observeMixTypeExplicitSelection(canonicalCandidate, allowAutoPromotion: false)
+      return .composition
+    case .pinyinFull, .pinyinAbbreviation:
+      guard confirmHybridPinyinCandidate(canonicalCandidate) else { return nil }
+      observeMixTypeExplicitSelection(canonicalCandidate)
       return .composition
     }
   }
 
   // MARK: - Private helpers
+
+  private func shouldPreferHybridASCIIWord(
+    rawKeys: String,
+    offers: [HybridCandidateOffer]
+  ) -> Bool {
+    guard prefs.mixTypeEnglishIntentEnabled,
+          MixTypeEnglishIntent.looksLikeEnglishWord(rawKeys),
+          !offers.isEmpty
+    else {
+      return false
+    }
+
+    // Only suppress accidental factory abbreviation collisions. Any stronger or user-controlled
+    // source keeps the Chinese candidate UI available.
+    return offers.allSatisfy { $0.source == .pinyinAbbreviation }
+  }
 
   private func hybridFullPinyinOffers(for rawKeys: String) -> [HybridCandidateOffer] {
     guard composer.parser.isPinyin else { return [] }

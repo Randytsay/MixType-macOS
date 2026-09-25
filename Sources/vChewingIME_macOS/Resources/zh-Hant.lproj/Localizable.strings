@@ -650,3 +650,15 @@
 "i18n:MixType.PersonalLexicon.disabled" = "停用此詞";
 "i18n:MixType.PersonalLexicon.autoDerive" = "新增後會完全在本機解析讀音並自動產生拼音與簡拼。";
 "i18n:MixType.PersonalLexicon.save" = "儲存";
+"i18n:MixType.AutoPromotion.enabled" = "自動學習常用詞";
+"i18n:MixType.AutoPromotion.threshold" = "加入個人詞庫門檻";
+"i18n:MixType.AutoPromotion.thresholdValue:%d" = "選擇 %d 次";
+"i18n:MixType.AutoPromotion.help" = "只有您明確選中的中文候選才會累積次數；僅顯示、取消或預覽候選不計算。達到門檻後會以當次實際讀音建立長期個人詞條，可在上方列表中編輯、停用或刪除。";
+"i18n:MixType.EnglishIntent.enabled" = "優先辨識明顯英文單字";
+"i18n:MixType.EnglishIntent.help" = "當輸入只碰到原廠簡拼候選、沒有 CIN、個人詞庫或完整拼音命中時，對像 space、hello、meeting 這類明顯英文形狀的字串優先走 ASCII。Enter／Shift+Space 的強制英文操作仍保留。";
+"i18n:UserDef.kMixTypeAutoPromotionEnabled.shortTitle" = "自動學習常用詞";
+"i18n:UserDef.kMixTypeAutoPromotionEnabled.description" = "將重複明確選中的中文詞提升為 MixType 個人詞庫。";
+"i18n:UserDef.kMixTypeAutoPromotionThreshold.shortTitle" = "自動學習門檻";
+"i18n:UserDef.kMixTypeAutoPromotionThreshold.description" = "同一詞語與實際讀音被明確選中多少次後，自動加入個人詞庫。";
+"i18n:UserDef.kMixTypeEnglishIntentEnabled.shortTitle" = "優先辨識明顯英文單字";
+"i18n:UserDef.kMixTypeEnglishIntentEnabled.description" = "在沒有更強中文來源時，將明顯英文形狀的簡拼碰撞優先視為 ASCII。";

@@ -650,3 +650,15 @@
 "i18n:MixType.PersonalLexicon.disabled" = "Disable this phrase";
 "i18n:MixType.PersonalLexicon.autoDerive" = "After adding, pronunciation, full Pinyin, and initials are generated locally.";
 "i18n:MixType.PersonalLexicon.save" = "Save";
+"i18n:MixType.AutoPromotion.enabled" = "Automatically learn frequently selected phrases";
+"i18n:MixType.AutoPromotion.threshold" = "Personal Lexicon promotion threshold";
+"i18n:MixType.AutoPromotion.thresholdValue:%d" = "%d selections";
+"i18n:MixType.AutoPromotion.help" = "Only explicitly confirmed Chinese candidates count. Merely showing, previewing, or canceling a candidate does not. When the threshold is reached, MixType creates a persistent Personal Lexicon entry with the actual selected reading; you can edit, disable, or delete it above.";
+"i18n:MixType.EnglishIntent.enabled" = "Prefer obvious English words";
+"i18n:MixType.EnglishIntent.help" = "When a token collides only with factory Pinyin abbreviations and has no CIN, Personal Lexicon, or full-Pinyin match, word-like inputs such as space, hello, and meeting prefer ASCII. Enter and Shift+Space remain explicit English overrides.";
+"i18n:UserDef.kMixTypeAutoPromotionEnabled.shortTitle" = "Automatically learn frequently selected phrases";
+"i18n:UserDef.kMixTypeAutoPromotionEnabled.description" = "Promote repeatedly and explicitly selected Chinese phrases into the MixType Personal Lexicon.";
+"i18n:UserDef.kMixTypeAutoPromotionThreshold.shortTitle" = "Auto-learning threshold";
+"i18n:UserDef.kMixTypeAutoPromotionThreshold.description" = "How many explicit selections of the same phrase and actual reading are required before adding it to the Personal Lexicon.";
+"i18n:UserDef.kMixTypeEnglishIntentEnabled.shortTitle" = "Prefer obvious English words";
+"i18n:UserDef.kMixTypeEnglishIntentEnabled.description" = "Prefer ASCII for English-shaped abbreviation collisions when no stronger Chinese source exists.";

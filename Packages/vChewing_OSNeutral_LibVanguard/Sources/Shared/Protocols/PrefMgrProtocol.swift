@@ -88,6 +88,9 @@ public protocol PrefMgrProtocol {
   var cns11643Enabled: Bool { get set }
   var cassetteEnabled: Bool { get set }
   var hybridCassettePinyinEnabled: Bool { get set }
+  var mixTypeAutoPromotionEnabled: Bool { get set }
+  var mixTypeAutoPromotionThreshold: Int { get set }
+  var mixTypeEnglishIntentEnabled: Bool { get set }
   var mixedAlphanumericalEnabled: Bool { get set }
   var mixedAlnumJudgeReadingsBySequentialRawKeyOrder: Bool { get set }
   var enableLatchedAlnumStateInMixedAlnumMode: Bool { get set }

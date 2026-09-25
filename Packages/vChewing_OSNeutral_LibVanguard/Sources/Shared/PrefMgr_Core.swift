@@ -428,6 +428,15 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
   @AppProperty(userDef: .kHybridCassettePinyinEnabled)
   public var hybridCassettePinyinEnabled: Bool
 
+  @AppProperty(userDef: .kMixTypeAutoPromotionEnabled)
+  public var mixTypeAutoPromotionEnabled: Bool
+
+  @AppProperty(userDef: .kMixTypeAutoPromotionThreshold)
+  public var mixTypeAutoPromotionThreshold: Int
+
+  @AppProperty(userDef: .kMixTypeEnglishIntentEnabled)
+  public var mixTypeEnglishIntentEnabled: Bool
+
   @AppProperty(userDef: .kSuppressFactoryUnigramsOfKanaSyllables)
   public var suppressFactoryUnigramsOfKanaSyllables: Bool {
     didSet { didAskForSyncingLMPrefs?() }

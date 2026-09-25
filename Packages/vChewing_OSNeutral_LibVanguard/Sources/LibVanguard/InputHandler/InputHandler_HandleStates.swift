@@ -263,23 +263,24 @@ extension InputHandlerProtocol {
   /// - Parameters:
   ///   - candidate: 使用者選中的前方候選。
   ///   - memorizePOM: 是否收集 POM 觀察（僅使用者顯式選字的確認路徑傳入 true）。
+  @discardableResult
   public func confirmFuriousFrontCandidate(
     _ candidate: CandidateInState,
     memorizePOM: Bool = false
-  ) {
+  ) -> Bool {
     // 閘門再驗：與預覽／候選清單共用同一套守衛。
-    guard hasFuriousFrontPending else { return }
+    guard hasFuriousFrontPending else { return false }
     // P164 補修：聯合重切候選（trail＋注拼槽替代切分）確認——執行切分替換、
     // trail 更新為新切分、清注拼槽；不遞交、不寫 POM 觀察（讀音層變更）。
-    if applyFuriousCoSegmentedOfferIfAny(candidate: candidate) { return }
+    if applyFuriousCoSegmentedOfferIfAny(candidate: candidate) { return false }
     // α 路徑：注拼槽整段無法展開成單一音節桶（如「ysxb」）時，以簡拼整詞候選確認。
     let furiousContext = furiousFrontContext
     let abbreviatedCells = furiousContext == nil ? furiousAbbreviatedCells : nil
-    guard furiousContext != nil || abbreviatedCells != nil else { return }
+    guard furiousContext != nil || abbreviatedCells != nil else { return false }
     invalidateFuriousTrail() // 就地選字為使用者顯式干涉：狂拼 trail 失效。
     furiousHighlightOverride = nil // 高亮覆寫僅供當拍消費。
     let bucket = furiousContext?.bucket ?? []
-    guard !candidate.value.isEmpty else { return }
+    guard !candidate.value.isEmpty else { return false }
     let preservedSentenceBeforeConsolidation = assembler.assembledSentence
     let preservedCursorPosition = actualNodeCursorPosition
     let romajiBackup = composer.romajiBuffer
@@ -294,15 +295,15 @@ extension InputHandlerProtocol {
     case .failed:
       // 失敗防禦：復原注拼槽暫存，靜默退回。
       composer.replacePinyinBuffer(with: romajiBackup)
-      return
+      return false
     case .inserted:
       // 覆寫失敗：保留已插入讀音（組句結果與 copilot 預覽一致）。
-      return
+      return false
     case .overridden:
       break
     }
     // 僅使用者顯式選字（memorizePOM）才進入 POM 觀察；Enter 固化高亮候選不寫入。
-    guard memorizePOM else { return }
+    guard memorizePOM else { return true }
     if let adjustedObservation = Homa.makePerceptionIntel(
       previouslyAssembled: preservedSentenceBeforeConsolidation,
       currentAssembled: assembler.assembledSentence,
@@ -321,6 +322,7 @@ extension InputHandlerProtocol {
       )
       prefs.failureFlagForPOMObservation = false
     }
+    return true
   }
 
   /// 生成「正在輸入」狀態。相關的內容會被拿給狀態機械用來處理在電腦螢幕上顯示的內容。

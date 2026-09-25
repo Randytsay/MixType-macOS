@@ -319,6 +319,7 @@ extension SessionProtocol {
         skipObservation: !prefs.fetchSuggestionsFromPerceptionOverrideModel,
         explicitlyChosen: true
       )
+      inputHandler.observeMixTypeExplicitSelection(selectedValue)
       var result: State = inputHandler.generateStateOfInputting()
       defer { switchState(result) } // 這是最終輸出結果。
       if prefs.useSCPCTypingMode {
@@ -365,7 +366,8 @@ extension SessionProtocol {
       // 使用者顯式選字＝符合 POM 記憶的明確意志，故傳入 memorizePOM: true。
       if inputHandler.isFuriousTypingModeEffective {
         let selectedValue = state.candidates[index]
-        inputHandler.confirmFuriousFrontCandidate(selectedValue, memorizePOM: true)
+        let confirmed = inputHandler.confirmFuriousFrontCandidate(selectedValue, memorizePOM: true)
+        if confirmed { inputHandler.observeMixTypeExplicitSelection(selectedValue) }
         switchState(inputHandler.generateStateOfInputting())
         return
       }

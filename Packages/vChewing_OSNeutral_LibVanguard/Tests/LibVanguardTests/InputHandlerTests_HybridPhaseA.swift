@@ -996,6 +996,93 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     try verifyNativePhoneticPersonalLexicon(parser: .ofStandard, expectedProvider: .zhuyin)
   }
 
+  @Test
+  func test_IH523_HybridExplicitFactorySelectionAutoPromotesAtThreshold() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let oldEnabled = testHandler.prefs.mixTypeAutoPromotionEnabled
+    let oldThreshold = testHandler.prefs.mixTypeAutoPromotionThreshold
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    var personalSaveCount = 0
+    var pendingSaveCount = 0
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    SessionHost.shared.savePersonalLexiconData = { _ in personalSaveCount += 1 }
+    SessionHost.shared.savePersonalLexiconPromotionData = { _ in pendingSaveCount += 1 }
+    defer {
+      testHandler.prefs.mixTypeAutoPromotionEnabled = oldEnabled
+      testHandler.prefs.mixTypeAutoPromotionThreshold = oldThreshold
+      SessionHost.shared.savePersonalLexiconData = { _ in }
+      SessionHost.shared.savePersonalLexiconPromotionData = { _ in }
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.currentLM.replacePersonalLexiconEntries([])
+      testHandler.currentLM.replacePersonalLexiconPromotionObservations([])
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    testHandler.prefs.mixTypeAutoPromotionEnabled = true
+    testHandler.prefs.mixTypeAutoPromotionThreshold = 3
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    for expectedCount in 1 ... 3 {
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+      typeSentence("nengliu")
+
+      // Merely displaying the candidate must never count as a selection.
+      let beforeSelection = testHandler.currentLM.personalLexiconPromotionObservations.first?.selectionCount ?? 0
+      #expect(beforeSelection == expectedCount - 1)
+
+      let candidateIndex = try #require(
+        testSession.state.candidates.firstIndex(where: { $0.value == "能留" })
+      )
+      testSession.candidatePairSelectionConfirmed(at: candidateIndex)
+
+      if expectedCount < 3 {
+        #expect(testHandler.currentLM.personalLexiconEntries.isEmpty)
+        #expect(testHandler.currentLM.personalLexiconPromotionObservations.first?.selectionCount == expectedCount)
+      }
+    }
+
+    let promoted = try #require(testHandler.currentLM.personalLexiconEntries.first)
+    #expect(promoted.phrase == "能留")
+    #expect(promoted.source == .autoPromoted)
+    #expect(promoted.fullPinyinKey == "nengliu")
+    #expect(promoted.initialsKey == "nl")
+    #expect(promoted.selectionCount == 3)
+    #expect(testHandler.currentLM.personalLexiconPromotionObservations.isEmpty)
+    #expect(personalSaveCount == 1)
+    #expect(pendingSaveCount == 3)
+  }
+
+  @Test(arguments: [
+    (raw: "space", expected: true),
+    (raw: "hello", expected: true),
+    (raw: "meeting", expected: true),
+    (raw: "server", expected: true),
+    (raw: "tdny", expected: false),
+    (raw: "ysxb", expected: false),
+    (raw: "jngsfa", expected: false),
+    (raw: "nl", expected: false),
+  ])
+  func test_IH524_MixTypeConservativeEnglishWordShape(
+    scenario: (raw: String, expected: Bool)
+  ) {
+    #expect(MixTypeEnglishIntent.looksLikeEnglishWord(scenario.raw) == scenario.expected)
+  }
+
   private func verifyNativePhoneticPersonalLexicon(
     parser: KeyboardParser,
     expectedProvider: Shared.MixTypeBaseInputProvider

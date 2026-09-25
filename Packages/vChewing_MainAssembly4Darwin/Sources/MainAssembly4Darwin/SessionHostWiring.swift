@@ -31,6 +31,14 @@ extension SessionHost {
         vCLog("Personal Lexicon save failed after selection: \(error.localizedDescription)")
       }
     }
+    host.savePersonalLexiconPromotionData = { isCHS in
+      let mode: Shared.InputMode = isCHS ? .imeModeCHS : .imeModeCHT
+      do {
+        try LXMgr.savePersonalLexiconPromotionData(mode: mode)
+      } catch {
+        vCLog("Personal Lexicon pending save failed after selection: \(error.localizedDescription)")
+      }
+    }
     host.writeUserPhrasesAtOnce = { LXMgr.writeUserPhrasesAtOnce($0, areWeFiltering: $1) }
     host.bleachSpecifiedSuggestions = { targets, headReadings, mode in
       if let headReadings, !headReadings.isEmpty {

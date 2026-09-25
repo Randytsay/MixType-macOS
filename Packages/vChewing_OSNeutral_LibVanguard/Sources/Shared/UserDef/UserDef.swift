@@ -57,6 +57,9 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kSpaceKeyBehaviorAgainstICB = "SpaceKeyBehaviorAgainstICB"
   case kCassetteEnabled = "CassetteEnabled"
   case kHybridCassettePinyinEnabled = "HybridCassettePinyinEnabled"
+  case kMixTypeAutoPromotionEnabled = "MixTypeAutoPromotionEnabled"
+  case kMixTypeAutoPromotionThreshold = "MixTypeAutoPromotionThreshold"
+  case kMixTypeEnglishIntentEnabled = "MixTypeEnglishIntentEnabled"
   case kMixedAlphanumericalEnabled = "MixedAlphanumericalEnabled"
   case kMixedAlnumJudgeReadingsBySequentialRawKeyOrder = "MixedAlnumJudgeReadingsBySequentialRawKeyOrder"
   case kEnableLatchedAlnumStateInMixedAlnumMode = "EnableLatchedAlnumStateInMixedAlnumMode"
@@ -580,6 +583,7 @@ extension UserDef {
     // 不得寫成 `0 ... 2`：那會令選項 3／4／5 於匯入時被拒、於和解時被夾成 2。
     case .kNumPadCharInputBehavior: 0 ... 5
     case .kSpaceKeyBehaviorAgainstICB: 0 ... 2
+    case .kMixTypeAutoPromotionThreshold: 2 ... 20
     case .kCandidateListTextSize: 12 ... 196
     case .kPopupCompositionBufferTextSize: 18 ... 40
     default: nil
@@ -666,6 +670,9 @@ extension UserDef {
     case .kSpaceKeyBehaviorAgainstICB: return .integer(1)
     case .kCassetteEnabled: return .bool(false)
     case .kHybridCassettePinyinEnabled: return .bool(false)
+    case .kMixTypeAutoPromotionEnabled: return .bool(true)
+    case .kMixTypeAutoPromotionThreshold: return .integer(3)
+    case .kMixTypeEnglishIntentEnabled: return .bool(true)
     case .kMixedAlphanumericalEnabled: return .bool(false)
     case .kMixedAlnumJudgeReadingsBySequentialRawKeyOrder: return .bool(true)
     case .kEnableLatchedAlnumStateInMixedAlnumMode: return .bool(false)
@@ -959,6 +966,21 @@ extension UserDef {
         userDef: self,
         shortTitle: "i18n:UserDef.kHybridCassettePinyinEnabled.shortTitle",
         description: "i18n:UserDef.kHybridCassettePinyinEnabled.description"
+      )
+    case .kMixTypeAutoPromotionEnabled: return .init(
+        userDef: self,
+        shortTitle: "i18n:UserDef.kMixTypeAutoPromotionEnabled.shortTitle",
+        description: "i18n:UserDef.kMixTypeAutoPromotionEnabled.description"
+      )
+    case .kMixTypeAutoPromotionThreshold: return .init(
+        userDef: self,
+        shortTitle: "i18n:UserDef.kMixTypeAutoPromotionThreshold.shortTitle",
+        description: "i18n:UserDef.kMixTypeAutoPromotionThreshold.description"
+      )
+    case .kMixTypeEnglishIntentEnabled: return .init(
+        userDef: self,
+        shortTitle: "i18n:UserDef.kMixTypeEnglishIntentEnabled.shortTitle",
+        description: "i18n:UserDef.kMixTypeEnglishIntentEnabled.description"
       )
     case .kMixedAlphanumericalEnabled: return .init(
         userDef: self,

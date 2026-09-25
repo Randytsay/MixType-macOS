@@ -307,6 +307,9 @@ extension LXAssembly {
     public var isCassetteDataLoaded: Bool { Self.lxCassette.isLoaded }
 
     public var personalLexiconEntries: [PersonalLexiconEntry] { lxPersonalLexicon.entries }
+    public var personalLexiconPromotionObservations: [PersonalLexiconPromotionObservation] {
+      lxPersonalLexiconPromotion.observations
+    }
 
     public func replacePersonalLexiconEntries(_ entries: [PersonalLexiconEntry]) {
       lxPersonalLexicon.replaceEntries(entries)
@@ -325,6 +328,75 @@ extension LXAssembly {
     @discardableResult
     public func recordPersonalLexiconSelection(id: UUID, now: Date = Date()) -> Bool {
       lxPersonalLexicon.recordSelection(id: id, now: now)
+    }
+
+    @discardableResult
+    public func recordPersonalLexiconSelection(
+      phrase: String,
+      readings: [String],
+      now: Date = Date()
+    ) -> Bool {
+      guard let entry = lxPersonalLexicon.entries.first(where: {
+        !$0.disabled && $0.phrase == phrase && $0.readings == readings
+      }) else { return false }
+      return lxPersonalLexicon.recordSelection(id: entry.id, now: now)
+    }
+
+    public func replacePersonalLexiconPromotionObservations(
+      _ observations: [PersonalLexiconPromotionObservation]
+    ) {
+      lxPersonalLexiconPromotion.replaceObservations(observations)
+    }
+
+    public func loadPersonalLexiconPromotionData(_ data: Data) throws {
+      try lxPersonalLexiconPromotion.load(data: data)
+    }
+
+    public func exportPersonalLexiconPromotionData() throws -> Data {
+      try lxPersonalLexiconPromotion.encode()
+    }
+
+    /// 記錄一次明確選字並在門檻達成時提升為長期 Personal Lexicon。
+    /// 已存在 Personal entry 時不重複建立 pending observation。
+    public func observePersonalLexiconPromotion(
+      phrase: String,
+      readings: [String],
+      threshold: Int,
+      now: Date = Date()
+    ) -> PersonalLexiconAutoPromotionOutcome {
+      if lxPersonalLexicon.entries.contains(where: { $0.phrase == phrase && $0.readings == readings }) {
+        return .alreadyPersonal
+      }
+      guard let keys = PersonalLexiconKeyGenerator.generate(readings: readings) else { return .ignored }
+
+      switch lxPersonalLexiconPromotion.observe(
+        phrase: phrase,
+        readings: readings,
+        threshold: threshold,
+        now: now
+      ) {
+      case .ignored:
+        return .ignored
+      case let .pending(count):
+        return .pending(count: count)
+      case let .thresholdReached(observation):
+        let entry = PersonalLexiconEntry(
+          phrase: observation.phrase,
+          readings: observation.readings,
+          pinyinTokens: keys.pinyinTokens,
+          fullPinyinKey: keys.fullPinyinKey,
+          initialsKey: keys.initialsKey,
+          source: .autoPromoted,
+          selectionCount: observation.selectionCount,
+          createdAt: observation.firstSelectedAt,
+          updatedAt: now,
+          lastUsedAt: observation.lastSelectedAt,
+          pinned: false
+        )
+        guard lxPersonalLexicon.upsert(entry) else { return .ignored }
+        _ = lxPersonalLexiconPromotion.remove(phrase: observation.phrase, readings: observation.readings)
+        return .promoted(entry)
+      }
     }
 
     public func loadPersonalLexiconData(_ data: Data) throws {
@@ -770,6 +842,7 @@ extension LXAssembly {
     var lxReplacements = LXReplacements()
     var lxAssociates = LXAssociates()
     var lxPersonalLexicon = PersonalLexiconStore()
+    var lxPersonalLexiconPromotion = PersonalLexiconPromotionStore()
 
     /// 額外掛載的語言模組來源中樞（多來源掛載）。
     /// 預設為空，故對既有行為零影響；宿主可經由 `mountGramSupplier(_:)` 追加來源。
