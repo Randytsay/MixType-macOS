@@ -80,6 +80,13 @@
             }
             SettingsUIHost.shared.syncLMPrefs()
           }
+          UserDef.kHybridCassettePinyinEnabled.renderUI {
+            if PrefMgr.shared.hybridCassettePinyinEnabled {
+              // Hybrid 必須有可用的拼音 parser；開啟時自動選用既有 Pinyin 槽位。
+              PrefMgr.shared.pinyinTypingEnabled = true
+            }
+            SettingsUIHost.shared.syncLMPrefs()
+          }
         }
 
         // MARK: - Something Else

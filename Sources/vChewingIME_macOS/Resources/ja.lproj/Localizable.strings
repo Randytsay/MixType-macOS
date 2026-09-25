@@ -392,7 +392,9 @@
 "i18n:UserDef.kCandidateWindowShowOnlyOneLine.description" = "田所候補陳列ウィンドウは普段４つの行・列で文字候補を陳列しています。ただ、老眼の患者には、大きなる文字候補サイズが必要であり、複数の行・列の文字候補陳列ウィンドウのサイズも大きくなります。この場合、文字候補を１つ行・列だけにすれば、候補陳列ウィンドウのサイズを多少縮むことはできます。従って、このオプションを提供しました。ただ、注意点は２つ：１）縦書きの時には、このオプションは無視され、文字候補はずっと１つ行・列にされます；２）１つ行・列だけで文字候補を陳列する場合、候補陳列ウィンドウのサイズは不足で、表示できる逆引参照の結果は１つだけです。";
 "i18n:UserDef.kCandidateWindowShowOnlyOneLine.shortTitle" = "ただ１つ行・列で文字候補を陳列";
 "i18n:UserDef.kCassetteEnabled.description" = "カセットモードは、CIN ファイルを用いて、（五筆や倉頡や嘸蝦米などのような）筆画入力を機能拡張できるモードである。ですが、単なる予備機能として提供したもののため、使いやすいかどうか、RIME や OpenVanilla などに比べられないかもしれん。";
-"i18n:UserDef.kCassetteEnabled.shortTitle" = "カセットモードを起用（注音入力はこのモードで使えぬ）";
+"i18n:UserDef.kCassetteEnabled.shortTitle" = "カセットモードを有効にする";
+"i18n:UserDef.kHybridCassettePinyinEnabled.description" = "同じキー列からカセット／CIN と Pinyin の候補を同時に検索します。CIN の完全一致候補を既定で優先します。この項目を有効にすると Pinyin パーサーへ自動的に切り替わります。";
+"i18n:UserDef.kHybridCassettePinyinEnabled.shortTitle" = "Hybrid CIN + Pinyin 候補を有効にする";
 "i18n:UserDef.kCassettePath.description" = "使いたい CIN カセットファイルをご指定ください。無効な設定は無視されます。\n\n⚠️💀 iCloud で管理されている「Documents」と「Desktop」は避けてください。これらの sandbox bookmark は、再起動やシステム更新の後で再利用できなくなることがあります。必要なら、先にローカルフォルダへ移動してください。";
 "i18n:UserDef.kCassettePath.shortTitle" = "カセットファイルの指定";
 "i18n:UserDef.kCheckAbusersOfSecureEventInputAPI.description" = "このような不正利用は「システム内蔵入力以外の全ての入力アプリがメニューで灰色状態で選べなくて使えない」の元凶である。センシティブな資料の記入どころでSecureEventInputをEnableSecureEventInput()で使うのは当然であるが、「入力中」状態が終わった後必ずDisableSecureEventInput()で状態解消すべきだと義務である。いくつかヘルパーアプリも、あるいはSecureEventInputを呼び起こしてからすぐ固まったアプリも、この状態になりやすい。特に、他のアプリの画面へ切り替えたとしても、固まったアプリのSecureEventInput状態は自動的に解消できぬ。";

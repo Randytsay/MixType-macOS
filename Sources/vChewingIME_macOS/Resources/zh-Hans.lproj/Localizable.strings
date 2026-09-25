@@ -392,7 +392,9 @@
 "i18n:UserDef.kCandidateWindowShowOnlyOneLine.description" = "田所选字窗在预设情况下会显示四列/四行候选字，提供类似于 macOS 内建中文输入法（macOS 10.9 起算）以及微软新注音输入法那样的选字窗排版体验。然而，部分使用者受老花眼所困扰，需要以较大字号来显示候选字。这种情况下，多行/多列的选字窗可能会占用过多的荧幕空间，也就需要这么一个选项来停用这个特性。需注意：如果当前文字输入环境是纵排输入的话，田所选字窗会始终使用单列/单行来显示候选字、而无视该选项。因为单行/单列选字窗的面积不够，所以最多只会显示一笔字根反查结果。";
 "i18n:UserDef.kCandidateWindowShowOnlyOneLine.shortTitle" = "仅以单行/单列来陈列候选字";
 "i18n:UserDef.kCassetteEnabled.description" = "磁带模式类似于雅虎奇摩输入法的 CIN 支援模式，允许使用者借由 CIN 表格档案扩充自己想要的笔画输入法（比如五笔、仓颉、呒虾米，等）。然而，因为唯音不打算为了这个功能而牺牲注音输入的体验，所以这个磁带模式的体验对于已经习惯 RIME 或者 OpenVanilla 的人群而言可能会稍微麻烦一些。";
-"i18n:UserDef.kCassetteEnabled.shortTitle" = "启用磁带模式，会停用注音输入";
+"i18n:UserDef.kCassetteEnabled.shortTitle" = "启用磁带模式";
+"i18n:UserDef.kHybridCassettePinyinEnabled.description" = "启用后，同一串按键会同时查询磁带／CIN 与拼音候选；CIN 精确命中预设优先。开启此项时会自动切换至拼音解析器。";
+"i18n:UserDef.kHybridCassettePinyinEnabled.shortTitle" = "启用 Hybrid CIN + 拼音候选";
 "i18n:UserDef.kCassettePath.description" = "请指定您要使用的 CIN 磁带档案。无效值会被忽略。\n\n⚠️💀 请避免使用由 iCloud 代管的“Documents”与“Desktop”目录。这些位置的 sandbox bookmark 可能会在重新开机或系统更新后失效。必要时请先把档案移到本机资料夹。";
 "i18n:UserDef.kCassettePath.shortTitle" = "磁带档案路径";
 "i18n:UserDef.kCheckAbusersOfSecureEventInputAPI.description" = "这种滥用会导致系统内的所有第三方输入法全都无法正常使用（在输入法选单内会变成灰色）。针对需要填写敏感资料的场合，使用 SecureEventInput 无可厚非。但是，用 EnableSecureEventInput() 开启该模式之后，就有义务在输入窗格失焦的那一刻呼叫 DisableSecureEventInput() 来结束这种状态。这种状态还常见于后台辅助 App 当中、或者某个 App 在叫出该模式之后失去回应（这样的话，哪怕被切换到后台，SecureEventInput 也不会自动解除）。";

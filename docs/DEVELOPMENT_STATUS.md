@@ -12,7 +12,7 @@ Specification:
 
 ## Current phase
 
-**V0.1 Phase D — Settings UI and macOS runtime validation**
+**V0.1 Phase E — installed-IME runtime validation**
 
 The clean Mac baseline has passed, including real IME installation and cassette/CIN input.
 Phase A routing and Phase B/C Hybrid candidate/selection semantics are implemented and pass Mac tests.
@@ -32,6 +32,7 @@ Phase A routing and Phase B/C Hybrid candidate/selection semantics are implement
 - Hybrid Phase A implementation: ✅; dedicated routing seam implemented and validated on the Mac
 - Hybrid Phase B implementation: ✅; CIN exact/quick + full-Pinyin + abbreviated-Pinyin providers, source ordering, and deduplication
 - Hybrid Phase C implementation: ✅; CIN preserves cassette commit semantics, Pinyin/abbreviation selections write real readings into Homa
+- Hybrid Phase D Settings UI: ✅; SwiftUI/AppKit cassette panes expose the Hybrid toggle and enable the existing Pinyin parser when Hybrid is turned on
 - V0.1 Phase A read-only implementation audit: ✅ (`docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md`)
 - V0.2 Personal Lexicon + Auto Promotion specification: ✅ (`docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md`)
 
@@ -67,10 +68,9 @@ Phase A routing and Phase B/C Hybrid candidate/selection semantics are implement
 
 ## Required next steps
 
-1. Add the Phase D Settings UI switch and localization for the Hybrid preference.
-2. Install the feature build on the Mac, enable Hybrid + Pinyin, and verify real factory-dictionary Pinyin alongside the private CIN.
-3. Verify real candidate ordering and selection in representative macOS applications.
-4. Keep Personal Lexicon and mixed English detection out of V0.1.
+1. Install the feature build on the Mac, enable Hybrid + Pinyin, and verify real factory-dictionary Pinyin alongside the private CIN.
+2. Verify real candidate ordering and selection in representative macOS applications.
+3. Keep Personal Lexicon and mixed English detection out of V0.1.
 
 ## V0.1 phase checklist
 
@@ -99,9 +99,9 @@ Phase A routing and Phase B/C Hybrid candidate/selection semantics are implement
 
 ### Phase D — Settings UI
 
-- [ ] Hybrid enable/disable switch
-- [ ] clear explanation that CIN exact remains preferred
-- [ ] localization updates
+- [x] Hybrid enable/disable switch
+- [x] clear explanation that CIN exact remains preferred
+- [x] localization updates
 
 ### Phase E — validation
 
@@ -115,7 +115,7 @@ Phase A routing and Phase B/C Hybrid candidate/selection semantics are implement
 
 ## Current blockers
 
-The Mac baseline blocker is resolved. Phase A commit `125bea1161b9f76d1b4be798adad9e93776c9531` passed its focused Hybrid tests on Xcode 27 / Swift 6.4. The current Phase B/C work passes 5 focused Hybrid tests, the full LibVanguard package suite (including 241 InputHandler tests), and `make debug` on the Mac. The WebCodex VPS does not currently have a Swift executable, so it cannot compile or run these tests locally.
+The Mac baseline blocker is resolved. Phase A commit `125bea1161b9f76d1b4be798adad9e93776c9531` passed its focused Hybrid tests on Xcode 27 / Swift 6.4. Phase B/C commit `d250f29fee919ce69fd0f51688bd4c8ab1f74075` passes 5 focused Hybrid tests, the full LibVanguard package suite (including 241 InputHandler tests), and `make debug` on the Mac. Phase D Settings UI changes pass all 17 SettingsUI tests, all four localization plist lints, and `make debug`.
 
 Draft PR #3 exists to provide a review surface. No GitHub Actions run was observed for the feature branch, so Mac validation is the current authoritative compile/test evidence.
 
@@ -125,11 +125,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/hybrid-input-v01
-Latest commit: pending Phase B/C commit
-Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics
-Tests: Hybrid filter 5/5 PASS; full LibVanguard package tests PASS (241 InputHandler tests); `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: pending Phase D commit
+Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization
+Tests: Hybrid filter 5/5 PASS; full LibVanguard package tests PASS (241 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
-Mac runtime validation: clean baseline PASS; Phase B/C compile/tests/build PASS; feature build installation and real Hybrid typing still pending
-Known issues: Phase D Settings UI is not implemented yet; Hybrid can currently be enabled only through the persisted preference
-Next unfinished item: commit/push Phase B/C, then add Phase D Settings UI and perform real Hybrid typing validation
+Mac runtime validation: clean baseline PASS; Phase B/C/D compile/tests/build PASS; feature build installation and real Hybrid typing still pending
+Known issues: GitHub Actions has not run for the feature branch; real installed Hybrid input is the remaining V0.1 gate
+Next unfinished item: install the feature build and verify real CIN + full-Pinyin + abbreviation behavior
 ```

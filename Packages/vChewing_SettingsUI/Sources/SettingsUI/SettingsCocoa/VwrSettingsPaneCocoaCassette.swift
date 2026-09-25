@@ -44,6 +44,13 @@ extension SettingsPanesCocoa {
             renderable.currentControl?.target = self
             renderable.currentControl?.action = #selector(self.cassetteEnabledToggled(_:))
           }
+          UserDef.kHybridCassettePinyinEnabled.renderCocoa(
+            fixWidth: contentWidth,
+            prefUITab: .tabCassette
+          ) { renderable in
+            renderable.currentControl?.target = self
+            renderable.currentControl?.action = #selector(self.hybridCassettePinyinToggled(_:))
+          }
         }?.boxed()
         NSStackView.buildSection(width: contentWidth) {
           UserDef.kAutoCompositeWithLongestPossibleCassetteKey.renderCocoa(
@@ -114,6 +121,15 @@ extension SettingsPanesCocoa {
         }
       } else {
         SettingsUIHost.shared.loadCassetteData()
+      }
+      SettingsUIHost.shared.syncLMPrefs()
+    }
+
+    @IBAction
+    func hybridCassettePinyinToggled(_: NSControl) {
+      if PrefMgr.shared.hybridCassettePinyinEnabled {
+        // Hybrid 必須有可用的拼音 parser；開啟時自動選用既有 Pinyin 槽位。
+        PrefMgr.shared.pinyinTypingEnabled = true
       }
       SettingsUIHost.shared.syncLMPrefs()
     }
