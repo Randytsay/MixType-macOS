@@ -25,6 +25,17 @@ extension InputHandlerProtocol {
       return
     }
 
+    // 單字不進 Personal Lexicon Auto Promotion；拼音使用者最需要的是同一個
+    // 無聲調讀音 bucket 內的候選偏好排序（例如 yao → 耀）。
+    if candidate.value.count == 1,
+       candidate.keyArray.count == 1,
+       typingMode == .hybridCassettePinyin || typingMode == .pinyinKeyblock || typingMode == .pinyinFuriousTyping,
+       let reading = candidate.keyArray.first,
+       currentLM.recordSingleCharacterPreference(reading: reading, value: candidate.value) != nil {
+      SessionHost.shared.saveSingleCharacterPreferenceData(currentLM.isCHS)
+      return
+    }
+
     guard allowAutoPromotion, prefs.mixTypeAutoPromotionEnabled else { return }
     if mixTypeBaseInputProvider == .cin, typingMode != .hybridCassettePinyin { return }
 
@@ -42,5 +53,49 @@ extension InputHandlerProtocol {
       SessionHost.shared.savePersonalLexiconData(currentLM.isCHS)
       SessionHost.shared.savePersonalLexiconPromotionData(currentLM.isCHS)
     }
+  }
+
+  func mixTypeSingleCharacterPreference(
+    for candidate: CandidateInState
+  ) -> LXAssembly.SingleCharacterPreferenceEntry? {
+    guard candidate.value.count == 1,
+          candidate.keyArray.count == 1,
+          let reading = candidate.keyArray.first
+    else {
+      return nil
+    }
+    return currentLM.singleCharacterPreference(reading: reading, value: candidate.value)
+  }
+
+  /// 只重排「單讀音＋單字」候選所在的位置，不改變長詞與其他 segment 的相對位置。
+  /// 有學習紀錄的單字依 selectionCount、lastSelectedAt 排前；無紀錄者保留原始順序。
+  func applyMixTypeSingleCharacterPreference(
+    to candidates: [CandidateInState]
+  ) -> [CandidateInState] {
+    let indices = candidates.indices.filter {
+      candidates[$0].value.count == 1 && candidates[$0].keyArray.count == 1
+    }
+    guard indices.count > 1 else { return candidates }
+
+    let indexedSingles = indices.map { index in
+      (originalIndex: index, candidate: candidates[index])
+    }
+    let sortedSingles = indexedSingles.sorted { lhs, rhs in
+      let lhsPref = mixTypeSingleCharacterPreference(for: lhs.candidate)
+      let rhsPref = mixTypeSingleCharacterPreference(for: rhs.candidate)
+      let lhsCount = lhsPref?.selectionCount ?? 0
+      let rhsCount = rhsPref?.selectionCount ?? 0
+      if lhsCount != rhsCount { return lhsCount > rhsCount }
+      let lhsDate = lhsPref?.lastSelectedAt ?? .distantPast
+      let rhsDate = rhsPref?.lastSelectedAt ?? .distantPast
+      if lhsDate != rhsDate { return lhsDate > rhsDate }
+      return lhs.originalIndex < rhs.originalIndex
+    }.map(\.candidate)
+
+    var result = candidates
+    for (targetIndex, candidate) in zip(indices, sortedSingles) {
+      result[targetIndex] = candidate
+    }
+    return result
   }
 }

@@ -311,6 +311,10 @@ extension LXAssembly {
       lxPersonalLexiconPromotion.observations
     }
 
+    public var singleCharacterPreferenceEntries: [SingleCharacterPreferenceEntry] {
+      lxSingleCharacterPreference.entries
+    }
+
     public func replacePersonalLexiconEntries(_ entries: [PersonalLexiconEntry]) {
       lxPersonalLexicon.replaceEntries(entries)
     }
@@ -354,6 +358,34 @@ extension LXAssembly {
 
     public func exportPersonalLexiconPromotionData() throws -> Data {
       try lxPersonalLexiconPromotion.encode()
+    }
+
+    public func replaceSingleCharacterPreferenceEntries(_ entries: [SingleCharacterPreferenceEntry]) {
+      lxSingleCharacterPreference.replaceEntries(entries)
+    }
+
+    @discardableResult
+    public func recordSingleCharacterPreference(
+      reading: String,
+      value: String,
+      now: Date = Date()
+    ) -> SingleCharacterPreferenceEntry? {
+      lxSingleCharacterPreference.recordSelection(reading: reading, value: value, now: now)
+    }
+
+    public func singleCharacterPreference(
+      reading: String,
+      value: String
+    ) -> SingleCharacterPreferenceEntry? {
+      lxSingleCharacterPreference.preference(reading: reading, value: value)
+    }
+
+    public func loadSingleCharacterPreferenceData(_ data: Data) throws {
+      try lxSingleCharacterPreference.load(data: data)
+    }
+
+    public func exportSingleCharacterPreferenceData() throws -> Data {
+      try lxSingleCharacterPreference.encode()
     }
 
     /// 記錄一次明確選字並在門檻達成時提升為長期 Personal Lexicon。
@@ -843,6 +875,7 @@ extension LXAssembly {
     var lxAssociates = LXAssociates()
     var lxPersonalLexicon = PersonalLexiconStore()
     var lxPersonalLexiconPromotion = PersonalLexiconPromotionStore()
+    var lxSingleCharacterPreference = SingleCharacterPreferenceStore()
 
     /// 額外掛載的語言模組來源中樞（多來源掛載）。
     /// 預設為空，故對既有行為零影響；宿主可經由 `mountGramSupplier(_:)` 追加來源。

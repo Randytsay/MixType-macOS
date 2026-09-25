@@ -598,6 +598,27 @@ final class LXMgrTests {
     #expect(entry.initialsKey == "hl")
   }
 
+  @Test
+  func test033_LXMgr_SingleCharacterPreferenceSaveAndReload() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let url = LXMgr.singleCharacterPreferenceDataURL(mode: mode)
+    defer {
+      mode.lexicon.replaceSingleCharacterPreferenceEntries([])
+      try? FileManager.default.removeItem(at: url)
+    }
+
+    mode.lexicon.replaceSingleCharacterPreferenceEntries([])
+    #expect(mode.lexicon.recordSingleCharacterPreference(reading: "ㄧㄠˋ", value: "耀") != nil)
+    #expect(mode.lexicon.recordSingleCharacterPreference(reading: "ㄧㄠˋ", value: "耀") != nil)
+    try LXMgr.saveSingleCharacterPreferenceData(mode: mode)
+
+    mode.lexicon.replaceSingleCharacterPreferenceEntries([])
+    #expect(mode.lexicon.singleCharacterPreferenceEntries.isEmpty)
+    LXMgr.loadSingleCharacterPreferenceData(mode: mode)
+
+    #expect(mode.lexicon.singleCharacterPreference(reading: "ㄧㄠ", value: "耀")?.selectionCount == 2)
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test

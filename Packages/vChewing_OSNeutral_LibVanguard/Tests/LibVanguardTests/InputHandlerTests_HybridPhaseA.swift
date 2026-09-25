@@ -1083,6 +1083,66 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(MixTypeEnglishIntent.looksLikeEnglishWord(scenario.raw) == scenario.expected)
   }
 
+  @Test
+  func test_IH525_SingleCharacterPreferencePromotesFrequentlySelectedYao() throws {
+    guard let testHandler else {
+      Issue.record("Test handler is nil.")
+      return
+    }
+
+    testHandler.currentLM.replaceSingleCharacterPreferenceEntries([])
+    defer { testHandler.currentLM.replaceSingleCharacterPreferenceEntries([]) }
+
+    let candidates: [CandidateInState] = [
+      (keyArray: ["ㄧㄠˋ"], value: "要"),
+      (keyArray: ["ㄧㄠˋ"], value: "藥"),
+      (keyArray: ["ㄧㄠˋ"], value: "耀"),
+    ]
+    #expect(testHandler.applyMixTypeSingleCharacterPreference(to: candidates).map(\.value) == ["要", "藥", "耀"])
+
+    let now = Date(timeIntervalSince1970: 1_700_000_000)
+    for offset in 0 ..< 3 {
+      #expect(
+        testHandler.currentLM.recordSingleCharacterPreference(
+          reading: "ㄧㄠˋ",
+          value: "耀",
+          now: now.addingTimeInterval(Double(offset))
+        ) != nil
+      )
+    }
+
+    let reordered = testHandler.applyMixTypeSingleCharacterPreference(to: candidates)
+    #expect(reordered.map(\.value) == ["耀", "要", "藥"])
+  }
+
+  @Test
+  func test_IH526_ExplicitPinyinSingleCharacterSelectionPersistsPreference() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    var saveCount = 0
+    SessionHost.shared.saveSingleCharacterPreferenceData = { _ in saveCount += 1 }
+    defer {
+      SessionHost.shared.saveSingleCharacterPreferenceData = { _ in }
+      testHandler.currentLM.replaceSingleCharacterPreferenceEntries([])
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    testHandler.currentLM.replaceSingleCharacterPreferenceEntries([])
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+
+    testHandler.observeMixTypeExplicitSelection((keyArray: ["ㄧㄠˋ"], value: "耀"))
+
+    #expect(testHandler.currentLM.singleCharacterPreference(reading: "ㄧㄠ", value: "耀")?.selectionCount == 1)
+    #expect(saveCount == 1)
+  }
+
   private func verifyNativePhoneticPersonalLexicon(
     parser: KeyboardParser,
     expectedProvider: Shared.MixTypeBaseInputProvider

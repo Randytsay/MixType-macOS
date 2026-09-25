@@ -92,6 +92,7 @@ public final class LXMgr {
     Self.loadUserPhrasesData()
     Self.loadPersonalLexiconData()
     Self.loadPersonalLexiconPromotionData()
+    Self.loadSingleCharacterPreferenceData()
     // 就關聯詞語登記惰性載入器，會趁首次需要完成載入。
     LXAssembly.LXFacade.associatesLazyLoader = {
       if PrefMgr.shared.associatedPhrasesEnabled {
@@ -284,6 +285,41 @@ public final class LXMgr {
       withIntermediateDirectories: true
     )
     let data = try mode.lexicon.exportPersonalLexiconPromotionData()
+    try data.write(to: url, options: [.atomic])
+  }
+
+  public static func loadSingleCharacterPreferenceData(mode: Shared.InputMode? = nil) {
+    let targetModes = mode.map { [$0] } ?? Shared.InputMode.validCases
+    for targetMode in targetModes where targetMode != .imeModeNULL {
+      let url = singleCharacterPreferenceDataURL(mode: targetMode)
+      guard FileManager.default.isReadableFile(atPath: url.path) else {
+        targetMode.lexicon.replaceSingleCharacterPreferenceEntries([])
+        continue
+      }
+      do {
+        let data = try Data(contentsOf: url)
+        try targetMode.lexicon.loadSingleCharacterPreferenceData(data)
+      } catch {
+        vCLog("Single-character preference load failed at \(url.path): \(error.localizedDescription)")
+      }
+    }
+  }
+
+  public static func ensureSingleCharacterPreferenceLoaded(mode: Shared.InputMode) {
+    guard mode != .imeModeNULL, mode.lexicon.singleCharacterPreferenceEntries.isEmpty else { return }
+    let url = singleCharacterPreferenceDataURL(mode: mode)
+    guard FileManager.default.isReadableFile(atPath: url.path) else { return }
+    loadSingleCharacterPreferenceData(mode: mode)
+  }
+
+  public static func saveSingleCharacterPreferenceData(mode: Shared.InputMode) throws {
+    guard mode != .imeModeNULL else { return }
+    let url = singleCharacterPreferenceDataURL(mode: mode)
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(),
+      withIntermediateDirectories: true
+    )
+    let data = try mode.lexicon.exportSingleCharacterPreferenceData()
     try data.write(to: url, options: [.atomic])
   }
 

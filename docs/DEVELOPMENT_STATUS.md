@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.2 Batch B complete in code — Auto Promotion + conservative English intent**
+**V0.2 Batch B complete in code — Auto Promotion + English intent + single-character Pinyin preference**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -69,6 +69,10 @@ and full-Pinyin matches.
 - English intent keeps stronger Chinese sources (CIN / Personal / full Pinyin) intact: ✅
 - Personal Lexicon manual reading editor accepts canonical Zhuyin or toned Hanyu Pinyin (`hui4 ling2`, `huì líng`) and normalizes to internal Zhuyin: ✅
 - single-character Personal Lexicon reading derivation now prefers the production reverse-lookup index; production regression locks `卉羚 → huiling / hl`: ✅
+- toneless Pinyin single-character preference store (`single-character-preferences-cht/chs.json`): ✅
+- explicit single-character Pinyin selections learn by tone-insensitive Zhuyin bucket (for example `ㄧㄠˋ → ㄧㄠ`) and persist across restarts: ✅
+- Hybrid and native Pinyin candidate lists re-rank only single-character peers; longer words keep their original relative positions: ✅
+- regression locks `要 / 藥 / 耀` so repeated explicit selection of `耀` moves it ahead without deleting alternatives: ✅
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -105,7 +109,8 @@ and full-Pinyin matches.
 1. Install Batch B and verify Auto Promotion controls, `space` English preference, and the existing `tdny` Personal/factory coexistence on the Mac.
 2. Verify a real three-selection promotion workflow and restart persistence of pending counts / promoted entries.
 3. Complete Mac E2E for Zhuyin / Pinyin / CIN base-provider switching and Personal Lexicon CRUD UI.
-4. Continue V0.3 mixed-token segmentation only after the V0.2 product surfaces are runtime-accepted.
+4. Verify real `yao → 耀` repeated-selection learning and restart persistence.
+5. Continue V0.3 mixed-token segmentation only after the V0.2 product surfaces are runtime-accepted.
 
 ## V0.2 implementation status
 
@@ -136,6 +141,8 @@ and full-Pinyin matches.
 - [x] auto-promotion pending JSON survives restart
 - [x] auto-learning enable/threshold Settings UI
 - [x] conservative English-intent filtering for abbreviation-only collisions
+- [x] toneless-Pinyin single-character selection preference + JSON persistence
+- [x] Hybrid/native Pinyin single-character candidate re-ranking
 - [ ] broader V0.3 English/Chinese token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens)
 
 ## V0.1 phase checklist
@@ -278,17 +285,26 @@ still stores normalized Zhuyin internally for Homa/LXAssembly compatibility. A p
 asserts `卉羚 → ㄏㄨㄟˋ ㄌㄧㄥˊ → huiling → hl`. Full LibVanguard tests, SettingsUI tests, LXMgrTests
 (24/24), four localization lints, and `make debug` all pass after this fix.
 
+Toneless Pinyin single-character learning is now separated from Personal Lexicon. Explicitly selecting
+a one-character Pinyin candidate records a preference keyed by tone-insensitive Zhuyin (for example
+`ㄧㄠˋ` normalizes to `ㄧㄠ`) plus the selected character. Hybrid and native Pinyin candidate generation
+use this persistent preference only to reorder single-character peers occupying the same candidate slots;
+multi-character phrases retain their original order. Regressions `IH525` / `IH526` verify that repeated
+selection of `耀` moves it ahead of `要 / 藥` and that the learning hook requests persistence. The
+dedicated JSON store round-trips successfully, LXMgr save/reload passes, full LibVanguard tests pass,
+SettingsUI remains 17/17 PASS, LXMgrTests are 25/25 PASS, and `make debug` passes.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: 9a35c0e9 plus Batch B working tree (commit pending)
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering
-Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 24/24 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: 94e010e1 plus single-character preference working tree (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking
+Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 25/25 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS on the previous installed build; Batch A Settings/provider UI E2E pending installation
-Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching, Batch A Settings UI, Auto Promotion, and conservative English intent still need real-Mac E2E
-Next unfinished item: commit/push/install Batch B, verify real-Mac V0.2 workflows, then begin V0.3 token segmentation only after acceptance
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; single-character preference real-Mac E2E pending installation
+Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and single-character preference still need final real-Mac E2E
+Next unfinished item: commit/push/install the single-character preference build, verify repeated `yao → 耀` selection moves it forward and survives restart, then continue V0.3 token segmentation after V0.2 acceptance
 ```

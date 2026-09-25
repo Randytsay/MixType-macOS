@@ -786,6 +786,13 @@ extension InputHandlerProtocol {
       }
     }
 
+    if typingMode == .pinyinKeyblock || typingMode == .pinyinFuriousTyping {
+      let pairs: [CandidateInState] = arrCandidates.map { ($0.keyArray, $0.value) }
+      arrCandidates = applyMixTypeSingleCharacterPreference(to: pairs).map {
+        Homa.CandidatePair(keyArray: $0.keyArray, value: $0.value)
+      }
+    }
+
     return arrCandidates.map { ($0.keyArray, $0.value) }
   }
 

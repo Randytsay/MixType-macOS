@@ -227,7 +227,7 @@ extension InputHandlerProtocol {
       bestByValue[gram.current] = gram
     }
 
-    return bestByValue.values.sorted { lhs, rhs in
+    let baseOffers = bestByValue.values.sorted { lhs, rhs in
       if lhs.probability != rhs.probability { return lhs.probability > rhs.probability }
       return lhs.current < rhs.current
     }.map {
@@ -236,6 +236,18 @@ extension InputHandlerProtocol {
         source: .pinyinFull,
         score: $0.probability
       )
+    }
+
+    let candidates = baseOffers.map(\.candidate)
+    let reordered = applyMixTypeSingleCharacterPreference(to: candidates)
+    let offerBySignature = Dictionary(
+      uniqueKeysWithValues: baseOffers.map { offer in
+        ("\(offer.candidate.keyArray.joined(separator: "\u{1F}"))\u{1E}\(offer.candidate.value)", offer)
+      }
+    )
+    return reordered.compactMap { candidate in
+      let signature = "\(candidate.keyArray.joined(separator: "\u{1F}"))\u{1E}\(candidate.value)"
+      return offerBySignature[signature]
     }
   }
 
