@@ -233,3 +233,6 @@ __pycache__/
 DataCompiler/dataCompiler.exe
 .vscode/launch.json
 [Tt]mp
+
+# MixType local private data (never commit private CIN / user lexicon files)
+.mixType-local/
