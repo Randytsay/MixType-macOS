@@ -119,11 +119,13 @@ The Mac baseline blocker is resolved. Phase A commit `125bea1161b9f76d1b4be798ad
 
 Commit `3845737c` fixes the first real full-Pinyin runtime blocker found during Phase E: normal `LXQuerier.grams(for:)` intentionally suppresses the factory phonetic lexicon while Cassette is enabled, so Hybrid could parse Pinyin but still return no factory Pinyin candidate. Hybrid now uses a read-only factory-phonetic query that bypasses only the Cassette source gate, then merges factory results with the existing user/temporary lexicon results without mutating `Config.isCassetteEnabled`.
 
-Commit `54eca706` fixes the next real-runtime issues reported from the installed Hybrid build: numeric labels in the inline candidate window can now be selected by their plain main-keyboard digit (for example, UI label `5` selects that candidate), and a leading plain digit passes through to the client when the loaded CIN has no code beginning with that digit. The latter is prefix-aware, so CIN tables that genuinely contain digit-leading codes retain that behavior. Focused Hybrid tests are now **9/9 PASS**; the full LibVanguard package suite is **PASS** with **245 InputHandler tests**; `make debug` is **PASS** on Xcode 27 / Swift 6.4.
+Commit `54eca706` fixes the next real-runtime issues reported from the installed Hybrid build: numeric labels in the inline candidate window can now be selected by their plain main-keyboard digit (for example, UI label `5` selects that candidate), and a leading plain digit passes through to the client when the loaded CIN has no code beginning with that digit. The latter is prefix-aware, so CIN tables that genuinely contain digit-leading codes retain that behavior. Focused Hybrid tests are now **10/10 PASS**; the full LibVanguard package suite is **PASS** with **246 InputHandler tests**; `make debug` is **PASS** on Xcode 27 / Swift 6.4.
 
 Draft PR #3 exists to provide a review surface. No GitHub Actions run was observed for the feature branch, so Mac validation is the current authoritative compile/test evidence.
 
-The feature build containing `54eca706` is installed in the current user's Input Methods directory.
+Commit `5d08a081` fixes a production-only Hybrid selection failure where the candidate UI state and a second candidate-source lookup could carry the same displayed value with a different internal `keyArray`. Because Hybrid candidates are already deduplicated by displayed value, selection now resolves the current canonical offer by displayed value and uses that canonical candidate for the final Pinyin/CIN action. A dedicated regression test covers stale/different internal key arrays for the same displayed candidate.
+
+The feature build containing `5d08a081` is installed in the current user's Input Methods directory.
 The previous IME was backed up under the ignored `Build/Backups/` directory before replacement.
 Codesign verification passes, OpenVanilla remains installed with its distinct bundle identifier,
 and the persisted runtime preferences report Cassette + Hybrid + Pinyin enabled. The private cassette
@@ -137,11 +139,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/hybrid-input-v01
-Latest commit: 54eca706
-Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization; Phase E factory-Pinyin source-gate fix; Hybrid numeric-selection and digit-passthrough fix
-Tests: Hybrid filter 9/9 PASS; full LibVanguard package tests PASS (245 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: 5d08a081
+Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization; Phase E factory-Pinyin source-gate fix; Hybrid numeric-selection and digit-passthrough fix; stable Hybrid candidate-source resolution
+Tests: Hybrid filter 10/10 PASS; full LibVanguard package tests PASS (246 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
 Mac runtime validation: clean baseline PASS; private CIN PASS; real full-Pinyin candidates visible; feature build with numeric routing fix installed/codesign PASS; Cassette + Hybrid + Pinyin prefs enabled
-Known issues: GitHub Actions has not run for the feature branch; numeric selection/pass-through and final Hybrid ordering/abbreviation checks still need real keystroke confirmation
-Next unfinished item: re-test `cai` + displayed numeric candidate key and standalone digits, then verify abbreviation and final candidate ordering in the installed feature build
+Known issues: GitHub Actions has not run for the feature branch; `cai` numeric candidate selection needs real keystroke re-check on the newly installed candidate-resolution build; final Hybrid ordering/abbreviation checks remain
+Next unfinished item: re-test `cai` + displayed numeric candidate key on build `5d08a081`; if PASS, verify abbreviation and final candidate ordering in the installed feature build
 ```
