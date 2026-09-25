@@ -134,9 +134,16 @@ The previous IME was backed up under the ignored `Build/Backups/` directory befo
 Codesign verification passes, OpenVanilla remains installed with its distinct bundle identifier,
 and the persisted runtime preferences report Cassette + Hybrid + Pinyin enabled. The private cassette
 baseline is already verified. Full-Pinyin lookup is visible in the real candidate window; the remaining
-real runtime now confirms `cai` candidate label `5` selects `蔡` without buzzer, and ordinary digit
-passthrough remains working. The remaining V0.1 runtime gate is full-Pinyin phrase selection plus
-abbreviation candidate ordering/selection in representative applications.
+real runtime now confirms `cai` candidate label `5` selects `蔡` without buzzer, ordinary digit
+passthrough remains working, and `nihao → 你好` full-Pinyin phrase lookup/selection works in the
+installed IME. The remaining V0.1 runtime gate is abbreviated-Pinyin candidate ordering/selection
+in a representative macOS application.
+
+Regression `IH101` adds a factory-only abbreviation path check: with Cassette + Hybrid enabled,
+`nl` resolves the test factory phrase `能留`, selection enters Homa with readings `ㄋㄥˊ / ㄌㄧㄡˊ`,
+and no temporary user gram is required. The same phrase is present in the bundled production factory
+dictionary, making `nl → 能留` the canonical final real-runtime abbreviation check. Focused Hybrid
+tests are now **12/12 PASS** and the full LibVanguard package suite is **PASS** with **248 InputHandler tests**.
 
 ## Handoff template
 
@@ -146,9 +153,9 @@ Update this section whenever a work batch is handed to another agent/environment
 Current branch: feat/hybrid-input-v01
 Latest commit: 90972db0
 Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization; Phase E factory-Pinyin source-gate fix; Hybrid numeric-selection and digit-passthrough fix; stable Hybrid candidate-source resolution; Hybrid Homa phonetic assembly path
-Tests: Hybrid filter 11/11 PASS; full LibVanguard package tests PASS (247 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Tests: Hybrid filter 12/12 PASS; full LibVanguard package tests PASS (248 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
-Mac runtime validation: clean baseline PASS; private CIN PASS; real full-Pinyin candidates visible; `cai → displayed 5 → 蔡` PASS on build `90972db0`; ordinary standalone digits PASS; Cassette + Hybrid + Pinyin prefs enabled
-Known issues: GitHub Actions has not run for the feature branch; final full-Pinyin phrase and abbreviation ordering/selection checks remain
-Next unfinished item: verify full-Pinyin phrase selection/commit, then abbreviation candidate ordering/selection in the installed feature build
+Mac runtime validation: clean baseline PASS; private CIN PASS; `cai → displayed 5 → 蔡` PASS; ordinary standalone digits PASS; `nihao → 你好` PASS; Cassette + Hybrid + Pinyin prefs enabled
+Known issues: GitHub Actions has not run for the feature branch; final real abbreviation ordering/selection check remains
+Next unfinished item: verify `nl → 能留` abbreviation lookup/selection in the installed feature build; if PASS, close V0.1 runtime acceptance and prepare the V0.2 Personal Lexicon branch
 ```

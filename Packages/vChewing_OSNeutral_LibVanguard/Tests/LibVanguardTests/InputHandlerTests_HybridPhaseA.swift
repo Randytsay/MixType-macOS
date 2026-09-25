@@ -527,4 +527,43 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.assembler.actualKeys == ["ㄋㄥˊ", "ㄌㄧㄡˊ"])
     #expect(testHandler.assembler.assembledSentence.map(\.value) == ["能留"])
   }
+
+  @Test
+  func test_IH101_HybridFactoryAbbreviationCanEnterAssemblerWithCassetteEnabled() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("nl")
+    let candidateIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "能留" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: candidateIndex)
+
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.actualKeys == ["ㄋㄥˊ", "ㄌㄧㄡˊ"])
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["能留"])
+  }
 }
