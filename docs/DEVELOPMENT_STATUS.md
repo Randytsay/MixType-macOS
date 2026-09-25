@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.2 first vertical slice — core/persistence/Hybrid lookup implemented**
+**V0.2 first vertical slice — core/persistence/Hybrid lookup implemented; Shift-ASCII runtime fix pending final E2E**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -44,6 +44,7 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 - local factory reading resolution + Tekkon Pinyin-key generation: ✅
 - atomic macOS persistence under the existing user-data directory: ✅
 - zero-candidate ASCII fallback, including prior Chinese composition: ✅
+- Shift-produced printable ASCII is handled before candidate selection (`Shift+2 → @`, `Shift+/ → ?`, uppercase letters): ✅ code/tests; installed-Mac E2E pending
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -77,8 +78,8 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 
 ## Required next steps
 
-1. Install the V0.2 feature build and seed one local, uncommitted `台達能源` entry for E2E validation.
-2. Verify `taidanengyuan → 台達能源`, `tdny → 台達能源`, and zero-candidate ASCII fallback on macOS.
+1. Install the Shift-ASCII fix and verify `Shift+2 → @` in the real IME, including while a Hybrid candidate pane is visible.
+2. Continue broader English-intent reuse from MixedAlphanumerical heuristics so ordinary English words do not surface accidental Chinese abbreviation candidates.
 3. Add Settings UI CRUD/edit-pronunciation support, then automatic promotion/learning.
 
 ## V0.2 implementation status
@@ -94,7 +95,9 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 - [x] manual host API taking only a Chinese phrase
 - [x] no-candidate Space/Enter ASCII fallback without buzzer
 - [x] Chinese composition + unknown ASCII fallback regression
-- [ ] installed-Mac E2E for `台達能源`
+- [x] installed-Mac E2E for `台達能源` full-Pinyin / initials lookup
+- [x] Shift-ASCII routing regression (`@`, `?`, uppercase) and candidate-collision protection
+- [ ] installed-Mac E2E for `Shift+2 → @`
 - [ ] Settings UI add/edit/remove/search
 - [ ] pronunciation correction UI for ambiguous readings
 - [ ] auto-promotion after explicit selections
@@ -178,17 +181,25 @@ Hybrid and retained in the raw buffer. The production factory dictionary contain
 but not `台達能源`; therefore the observed buzzer on finalization is a no-candidate UX gap rather than
 a long-Pinyin input-length failure. That fallback and the missing custom phrase belong to V0.2.
 
+V0.2 runtime validation now shows the locally seeded Personal Lexicon phrase `台達能源` can be produced
+through both requested Personal Lexicon paths in the installed IME. A follow-up real-Mac issue exposed
+that `Shift+2` was still routed through `charactersIgnoringModifiers` and could therefore be interpreted
+as raw key / candidate label `2` instead of visible `@`. Regressions `IH107` and `IH108` now require
+Shift-produced printable ASCII to be resolved through the active Latin keyboard layout before candidate
+handling, and require a pending raw token to remain literal ASCII rather than accidentally selecting a
+Chinese candidate. Full LibVanguard package tests pass after the fix and `make debug` passes.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
-Current branch: feat/hybrid-input-v01
-Latest commit: 90972db0
-Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization; Phase E factory-Pinyin source-gate fix; Hybrid numeric-selection and digit-passthrough fix; stable Hybrid candidate-source resolution; Hybrid Homa phonetic assembly path
-Tests: Hybrid filter 12/12 PASS; full LibVanguard package tests PASS (248 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
-CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
-Mac runtime validation: clean baseline PASS; private CIN PASS; `cai → displayed 5 → 蔡` PASS; ordinary standalone digits PASS; `nihao → 你好` PASS; `nl` abbreviated-Pinyin candidates + numeric selection PASS; Cassette + Hybrid + Pinyin prefs enabled
-Known issues: GitHub Actions has not run for the feature branch; V0.1 runtime acceptance itself is complete
-Next unfinished item: branch V0.2 and implement no-candidate ASCII fallback plus Personal Lexicon lookup/persistence
+Current branch: feat/personal-lexicon-v02
+Latest commit: 789cf42e plus current Shift-ASCII working-tree fix (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; zero-candidate ASCII fallback; Shift-ASCII routing fix in working tree
+Tests: full LibVanguard package tests PASS with IH107/IH108; PersonalLexiconTests PASS; LXMgrTests 18/18 PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+CI: no GitHub Actions run observed for the latest V0.2 feature work
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal Lexicon E2E PASS; Shift-ASCII real-Mac E2E pending installation of current fix
+Known issues: broad English-intent detection is not yet integrated into Hybrid, so ordinary English tokens may still surface accidental Pinyin-abbreviation candidates until explicitly finalized as ASCII
+Next unfinished item: install current Shift-ASCII build and verify `Shift+2 → @`; then continue richer MixedAlphanumerical reuse
 ```

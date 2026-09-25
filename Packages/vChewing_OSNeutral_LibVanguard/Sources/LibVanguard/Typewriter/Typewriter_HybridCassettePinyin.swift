@@ -39,6 +39,18 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
       return true
     }
 
+    // Shift 產生的可列印 ASCII 是明確的英文／符號意圖，必須在候選選字邏輯之前處理。
+    // 否則 Shift+2 會因 charactersIgnoringModifiers == "2" 而被誤認成「候選 2」。
+    // 若前方仍有尚未確認的 Hybrid raw token（例如 `space`），一律按原樣提交為 ASCII，
+    // 不因碰巧存在中文候選而自動選字；已經明確進入 Homa 的中文則照常先提交。
+    if let shiftedASCII = resolveShiftedPrintableASCII(input) {
+      let textToCommit = handler.committableDisplayText(sansReading: true)
+        + handler.calligrapher
+        + shiftedASCII
+      session.switchState(State.ofCommitting(textToCommit: textToCommit))
+      return true
+    }
+
     // Hybrid 的 inline candidate pane 直接以目前畫面 selectionKeys 接受主鍵盤數字。
     // 不沿用 Cassette/Furious 的 Shift 判斷，確保 UI 標示「5」時 plain 5 就選該候選。
     if session.state.isCandidateContainer,
@@ -106,6 +118,38 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
   }
 
   // MARK: Private
+
+  private func resolveShiftedPrintableASCII(_ input: some InputSignalProtocol) -> String? {
+    guard input.isShiftHeld,
+          !input.isControlHeld,
+          !input.isOptionHeld,
+          !input.isCommandHeld
+    else {
+      return nil
+    }
+
+    var visibleText = input.text.applyingTransformFW2HW(reverse: false)
+    let baseText = (input.inputTextIgnoringModifiers ?? input.text)
+      .applyingTransformFW2HW(reverse: false)
+
+    // 某些 client/event 只回報 base glyph（例如 Shift+2 仍回 "2"）。
+    // 這時依目前 Latin keyboard layout + keyCode 還原真正可見的 shifted glyph。
+    if visibleText == baseText {
+      let keyboardLayout = LatinKeyboardMappings(rawValue: handler.prefs.basicKeyboardLayout) ?? .qwerty
+      guard let mapped = keyboardLayout.mapTable[input.keyCode] else { return nil }
+      visibleText = mapped.1.applyingTransformFW2HW(reverse: false)
+    }
+
+    let scalars = visibleText.unicodeScalars
+    guard scalars.count == 1,
+          let scalar = scalars.first,
+          scalar.isASCII,
+          (0x21 ... 0x7E).contains(scalar.value)
+    else {
+      return nil
+    }
+    return visibleText
+  }
 
   private func refreshState(session: Handler.Session) {
     if handler.calligrapher.isEmpty {

@@ -780,4 +780,81 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.calligrapher.isEmpty)
     #expect(testHandler.assembler.isEmpty)
   }
+
+  @Test(arguments: [
+    (chars: "@", charsSansModifiers: "2", keyCode: UInt16(19), expected: "@"),
+    (chars: "2", charsSansModifiers: "2", keyCode: UInt16(19), expected: "@"),
+    (chars: "G", charsSansModifiers: "g", keyCode: UInt16(5), expected: "G"),
+    (chars: "/", charsSansModifiers: "/", keyCode: UInt16(44), expected: "?"),
+  ])
+  func test_IH107_HybridShiftASCIIUsesVisibleGlyph(
+    scenario: (chars: String, charsSansModifiers: String, keyCode: UInt16, expected: String)
+  ) throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    testHandler.clear()
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    let event = KBEvent.KeyEventData(
+      flags: .shift,
+      chars: scenario.chars,
+      charsSansModifiers: scenario.charsSansModifiers,
+      keyCode: scenario.keyCode
+    ).asEvent
+    #expect(testHandler.triageInput(event: event))
+    #expect(testSession.recentCommissions.joined() == scenario.expected)
+    #expect(testHandler.calligrapher.isEmpty)
+  }
+
+  @Test
+  func test_IH108_HybridShiftAtCommitsPendingRawAsASCIIInsteadOfSelectingCandidate() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("nengliu")
+    #expect(testHandler.calligrapher == "nengliu")
+    #expect(!testSession.state.candidates.isEmpty, "fixture should exercise candidate-window collision")
+
+    let shift2 = KBEvent.KeyEventData(
+      flags: .shift,
+      chars: "@",
+      charsSansModifiers: "2",
+      keyCode: 19
+    ).asEvent
+    #expect(testHandler.triageInput(event: shift2))
+    #expect(testSession.recentCommissions.joined() == "nengliu@")
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.isEmpty)
+  }
 }
