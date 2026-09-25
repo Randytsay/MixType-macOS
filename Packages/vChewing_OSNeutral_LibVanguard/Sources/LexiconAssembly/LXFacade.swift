@@ -147,6 +147,21 @@ extension LXAssembly {
         lxFacade.unigramsFor(keyArray: keyArray, partiallyMatch: lxFacade.config.partialMatchEnabled)
       }
 
+      /// MixType Hybrid 專用的原廠注拼詞庫查詢。
+      ///
+      /// 一般 `grams(for:)` 在 Cassette 開啟時會依既有唯音語義停用原廠注音詞庫；
+      /// Hybrid 必須在不改動全域 Cassette 設定的前提下，同時唯讀查詢 phonetic candidates。
+      /// 此 API 因此直接走原廠核心 chopped lookup，不寫入或切換 `Config.isCassetteEnabled`。
+      public func hybridPhoneticFactoryGrams(for keyArray: [Homa.PossibleKey]) -> [Homa.Gram] {
+        guard !keyArray.isEmpty else { return [] }
+        let choppedKeyArray = keyArray.map { $0.allValues.joined(separator: "&") }
+        guard choppedKeyArray.allSatisfy({ !$0.isEmpty }) else { return [] }
+        return lxFacade.factoryChoppedCoreUnigramsFor(
+          keyArray: choppedKeyArray,
+          strategy: .configuredLookup
+        )
+      }
+
       /// 給定讀音索引鍵陣列（相容舊版 `[String]` 介面），回傳經處理的單元圖陣列。
       ///
       /// 與 `grams(for: [Homa.PossibleKey])` 的差異：本重載接受顯式的 `partiallyMatch` 參數，

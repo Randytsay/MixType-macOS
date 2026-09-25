@@ -147,7 +147,21 @@ extension InputHandlerProtocol {
       possibleKeys.append(.multipleKeys(tones))
     }
 
-    return currentLM.lxQuerier.grams(for: possibleKeys).map {
+    let factoryGrams = currentLM.lxQuerier.hybridPhoneticFactoryGrams(for: possibleKeys)
+    let userAndTemporaryGrams = currentLM.lxQuerier.grams(for: possibleKeys)
+    var bestByValue: [String: Homa.Gram] = [:]
+    for gram in factoryGrams + userAndTemporaryGrams {
+      guard !gram.current.isEmpty else { continue }
+      if let existing = bestByValue[gram.current], existing.probability >= gram.probability {
+        continue
+      }
+      bestByValue[gram.current] = gram
+    }
+
+    return bestByValue.values.sorted { lhs, rhs in
+      if lhs.probability != rhs.probability { return lhs.probability > rhs.probability }
+      return lhs.current < rhs.current
+    }.map {
       HybridCandidateOffer(
         candidate: (keyArray: $0.keyArray, value: $0.current),
         source: .pinyinFull,

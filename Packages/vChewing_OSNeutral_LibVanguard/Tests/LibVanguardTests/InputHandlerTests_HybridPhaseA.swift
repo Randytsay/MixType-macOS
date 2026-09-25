@@ -246,4 +246,46 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.triageInput(event: KBEvent.KeyEventData.dataEnterReturn.asEvent))
     #expect(testSession.recentCommissions.joined() == "野獸先輩")
   }
+
+  @Test
+  func test_IH095_HybridFactoryPinyinSmoke() throws {
+    guard let testHandler else {
+      Issue.record("Test handler is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.clear()
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testHandler.clear()
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    let directFactory = testHandler.currentLM.factoryCoreUnigramsFor(
+      key: "ㄋㄥˊ-ㄌㄧㄡˊ",
+      keyArray: ["ㄋㄥˊ", "ㄌㄧㄡˊ"]
+    )
+    #expect(directFactory.contains { $0.current == "能留" })
+
+    // 測試詞庫不含「你好」，使用其中真實存在的雙音節原廠詞「能留」。
+    let offers = testHandler.hybridCandidateOffers(for: "nengliu")
+    #expect(offers.contains {
+      $0.source == .pinyinFull
+        && $0.candidate.keyArray == ["ㄋㄥˊ", "ㄌㄧㄡˊ"]
+        && $0.candidate.value == "能留"
+    })
+  }
 }
