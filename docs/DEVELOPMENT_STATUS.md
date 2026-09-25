@@ -68,8 +68,8 @@ Phase A routing and Phase B/C Hybrid candidate/selection semantics are implement
 
 ## Required next steps
 
-1. Install the feature build on the Mac, enable Hybrid + Pinyin, and verify real factory-dictionary Pinyin alongside the private CIN.
-2. Verify real candidate ordering and selection in representative macOS applications.
+1. Verify real factory-dictionary full Pinyin alongside the private CIN in the installed feature build.
+2. Verify real abbreviated-Pinyin candidate ordering and selection in representative macOS applications.
 3. Keep Personal Lexicon and mixed English detection out of V0.1.
 
 ## V0.1 phase checklist
@@ -105,19 +105,28 @@ Phase A routing and Phase B/C Hybrid candidate/selection semantics are implement
 
 ### Phase E — validation
 
-- [ ] package/unit tests pass
+- [x] package/unit tests pass
 - [ ] GitHub CI passes
-- [ ] macOS build succeeds
-- [ ] IME installs successfully
-- [ ] real Boshiamy CIN loads
+- [x] macOS build succeeds
+- [x] IME installs successfully
+- [x] real Boshiamy CIN loads
 - [ ] real candidate ordering verified
 - [ ] real typing tested in representative macOS applications
 
 ## Current blockers
 
-The Mac baseline blocker is resolved. Phase A commit `125bea1161b9f76d1b4be798adad9e93776c9531` passed its focused Hybrid tests on Xcode 27 / Swift 6.4. Phase B/C commit `d250f29fee919ce69fd0f51688bd4c8ab1f74075` passes 5 focused Hybrid tests, the full LibVanguard package suite (including 241 InputHandler tests), and `make debug` on the Mac. Phase D Settings UI changes pass all 17 SettingsUI tests, all four localization plist lints, and `make debug`.
+The Mac baseline blocker is resolved. Phase A commit `125bea1161b9f76d1b4be798adad9e93776c9531` passed its focused Hybrid tests on Xcode 27 / Swift 6.4. Phase B/C commit `d250f29fee919ce69fd0f51688bd4c8ab1f74075` implements candidate fusion and selection semantics. Phase D Settings UI changes pass all 17 SettingsUI tests and all four localization plist lints.
+
+Commit `3845737c` fixes the first real full-Pinyin runtime blocker found during Phase E: normal `LXQuerier.grams(for:)` intentionally suppresses the factory phonetic lexicon while Cassette is enabled, so Hybrid could parse Pinyin but still return no factory Pinyin candidate. Hybrid now uses a read-only factory-phonetic query that bypasses only the Cassette source gate, then merges factory results with the existing user/temporary lexicon results without mutating `Config.isCassetteEnabled`. Focused Hybrid tests are **6/6 PASS**, including a factory-Pinyin smoke test with Cassette enabled; the full LibVanguard package suite is **PASS** with **242 InputHandler tests**; `make debug` is **PASS** on Xcode 27 / Swift 6.4.
 
 Draft PR #3 exists to provide a review surface. No GitHub Actions run was observed for the feature branch, so Mac validation is the current authoritative compile/test evidence.
+
+The feature build containing `3845737c` is installed in the current user's Input Methods directory.
+The previous IME was backed up under the ignored `Build/Backups/` directory before replacement.
+Codesign verification passes, OpenVanilla remains installed with its distinct bundle identifier,
+and the persisted runtime preferences report Cassette + Hybrid + Pinyin enabled. The private cassette
+baseline is already verified; real keystroke validation of factory full-Pinyin / abbreviation ordering
+in the newly installed Hybrid build remains the final manual runtime gate.
 
 ## Handoff template
 
@@ -125,11 +134,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/hybrid-input-v01
-Latest commit: pending Phase D commit
-Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization
-Tests: Hybrid filter 5/5 PASS; full LibVanguard package tests PASS (241 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: 3845737c
+Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization; Phase E factory-Pinyin source-gate fix
+Tests: Hybrid filter 6/6 PASS; full LibVanguard package tests PASS (242 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
-Mac runtime validation: clean baseline PASS; Phase B/C/D compile/tests/build PASS; feature build installation and real Hybrid typing still pending
-Known issues: GitHub Actions has not run for the feature branch; real installed Hybrid input is the remaining V0.1 gate
-Next unfinished item: install the feature build and verify real CIN + full-Pinyin + abbreviation behavior
+Mac runtime validation: clean baseline PASS; private CIN PASS; feature build with factory-Pinyin fix installed/codesign PASS; Cassette + Hybrid + Pinyin prefs enabled; real Hybrid full-Pinyin/abbreviation typing still pending
+Known issues: GitHub Actions has not run for the feature branch; real installed Hybrid Pinyin ordering/selection is the remaining V0.1 gate
+Next unfinished item: type real full-Pinyin and abbreviation sequences in the installed feature build and verify candidate ordering/selection
 ```
