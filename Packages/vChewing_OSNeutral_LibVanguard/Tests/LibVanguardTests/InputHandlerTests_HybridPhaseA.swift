@@ -566,4 +566,43 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.assembler.actualKeys == ["ㄋㄥˊ", "ㄌㄧㄡˊ"])
     #expect(testHandler.assembler.assembledSentence.map(\.value) == ["能留"])
   }
+
+  @Test
+  func test_IH102_HybridLongFullPinyinRawBufferAcceptsEveryKey() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    let sequence = "taidanengyuan"
+    var expected = ""
+    for char in sequence {
+      let text = String(char)
+      let handled = testHandler.triageInput(event: KBEvent.KeyEventData(chars: text).asEvent)
+      expected.append(char)
+      #expect(handled, "Hybrid rejected key \(text) after prefix \(expected)")
+      #expect(testHandler.calligrapher == expected)
+    }
+  }
 }

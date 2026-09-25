@@ -12,10 +12,10 @@ Specification:
 
 ## Current phase
 
-**V0.1 Phase E — installed-IME runtime validation**
+**V0.1 runtime acceptance complete; V0.2 Personal Lexicon next**
 
-The clean Mac baseline has passed, including real IME installation and cassette/CIN input.
-Phase A routing and Phase B/C Hybrid candidate/selection semantics are implemented and pass Mac tests.
+The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
+Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
 
 ## Repository state
 
@@ -68,9 +68,9 @@ Phase A routing and Phase B/C Hybrid candidate/selection semantics are implement
 
 ## Required next steps
 
-1. Verify real factory-dictionary full Pinyin alongside the private CIN in the installed feature build.
-2. Verify real abbreviated-Pinyin candidate ordering and selection in representative macOS applications.
-3. Keep Personal Lexicon and mixed English detection out of V0.1.
+1. Start V0.2 Personal Lexicon on a dedicated feature branch from the accepted V0.1 branch.
+2. Add a safe ASCII fallback when Hybrid has no Chinese candidate instead of buzzing.
+3. Add local Personal Lexicon lookup for exact full Pinyin and initials (`taidanengyuan` / `tdny`).
 
 ## V0.1 phase checklist
 
@@ -110,8 +110,8 @@ Phase A routing and Phase B/C Hybrid candidate/selection semantics are implement
 - [x] macOS build succeeds
 - [x] IME installs successfully
 - [x] real Boshiamy CIN loads
-- [ ] real candidate ordering verified
-- [ ] real typing tested in representative macOS applications
+- [x] real candidate ordering verified
+- [x] real typing tested in representative macOS applications
 
 ## Current blockers
 
@@ -136,14 +136,19 @@ and the persisted runtime preferences report Cassette + Hybrid + Pinyin enabled.
 baseline is already verified. Full-Pinyin lookup is visible in the real candidate window; the remaining
 real runtime now confirms `cai` candidate label `5` selects `蔡` without buzzer, ordinary digit
 passthrough remains working, and `nihao → 你好` full-Pinyin phrase lookup/selection works in the
-installed IME. The remaining V0.1 runtime gate is abbreviated-Pinyin candidate ordering/selection
-in a representative macOS application.
+installed IME. Real `nl` input also produces abbreviated-Pinyin multiword candidates and numeric
+selection successfully chooses `能力`, completing the V0.1 abbreviation runtime gate.
 
 Regression `IH101` adds a factory-only abbreviation path check: with Cassette + Hybrid enabled,
 `nl` resolves the test factory phrase `能留`, selection enters Homa with readings `ㄋㄥˊ / ㄌㄧㄡˊ`,
 and no temporary user gram is required. The same phrase is present in the bundled production factory
 dictionary, making `nl → 能留` the canonical final real-runtime abbreviation check. Focused Hybrid
 tests are now **12/12 PASS** and the full LibVanguard package suite is **PASS** with **248 InputHandler tests**.
+
+Regression `IH102` verifies that every key of the long raw sequence `taidanengyuan` is accepted by
+Hybrid and retained in the raw buffer. The production factory dictionary contains `台達` and `台達電`
+but not `台達能源`; therefore the observed buzzer on finalization is a no-candidate UX gap rather than
+a long-Pinyin input-length failure. That fallback and the missing custom phrase belong to V0.2.
 
 ## Handoff template
 
@@ -155,7 +160,7 @@ Latest commit: 90972db0
 Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization; Phase E factory-Pinyin source-gate fix; Hybrid numeric-selection and digit-passthrough fix; stable Hybrid candidate-source resolution; Hybrid Homa phonetic assembly path
 Tests: Hybrid filter 12/12 PASS; full LibVanguard package tests PASS (248 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
-Mac runtime validation: clean baseline PASS; private CIN PASS; `cai → displayed 5 → 蔡` PASS; ordinary standalone digits PASS; `nihao → 你好` PASS; Cassette + Hybrid + Pinyin prefs enabled
-Known issues: GitHub Actions has not run for the feature branch; final real abbreviation ordering/selection check remains
-Next unfinished item: verify `nl → 能留` abbreviation lookup/selection in the installed feature build; if PASS, close V0.1 runtime acceptance and prepare the V0.2 Personal Lexicon branch
+Mac runtime validation: clean baseline PASS; private CIN PASS; `cai → displayed 5 → 蔡` PASS; ordinary standalone digits PASS; `nihao → 你好` PASS; `nl` abbreviated-Pinyin candidates + numeric selection PASS; Cassette + Hybrid + Pinyin prefs enabled
+Known issues: GitHub Actions has not run for the feature branch; V0.1 runtime acceptance itself is complete
+Next unfinished item: branch V0.2 and implement no-candidate ASCII fallback plus Personal Lexicon lookup/persistence
 ```
