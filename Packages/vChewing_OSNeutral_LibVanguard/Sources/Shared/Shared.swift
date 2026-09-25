@@ -301,6 +301,20 @@ public enum Shared {
     }
   }
 
+  // MARK: - MixTypeBaseInputProvider
+
+  /// MixType 的「主要／肌肉記憶輸入來源」。
+  ///
+  /// 智慧層（Personal Lexicon、學習、英文意圖）不應綁死某一種基礎輸入法；
+  /// 這個 enum 是後續 provider routing 的穩定抽象。CIN 可承載嘸蝦米、倉頡或任意自訂表格。
+  public enum MixTypeBaseInputProvider: String, CaseIterable, Identifiable, Sendable {
+    case zhuyin
+    case pinyin
+    case cin
+
+    public var id: String { rawValue }
+  }
+
   // Supported locales.
   public static let arrSupportedLocales: [String] = ["en", "zh-Hant", "zh-Hans", "ja"]
 }

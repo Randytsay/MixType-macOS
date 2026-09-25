@@ -39,6 +39,29 @@ extension SettingsUIHost {
     host.openPhraseFile = { mode, type, app in
       LXMgr.shared.openPhraseFile(mode: mode, type: type, using: app)
     }
+    host.personalLexiconEntries = { LXMgr.personalLexiconEntries(mode: $0) }
+    host.addPersonalLexiconPhrase = { phrase, mode, pinned in
+      try LXMgr.addPersonalLexiconPhrase(phrase, mode: mode, pinned: pinned)
+    }
+    host.updatePersonalLexiconEntry = { id, phrase, readings, pinned, disabled, mode in
+      try LXMgr.updatePersonalLexiconEntry(
+        id: id,
+        phrase: phrase,
+        readings: readings,
+        pinned: pinned,
+        disabled: disabled,
+        mode: mode
+      )
+    }
+    host.removePersonalLexiconEntry = { id, mode in
+      try LXMgr.removePersonalLexiconEntry(id: id, mode: mode)
+    }
+    host.importPersonalLexicon = { url, mode, replaceExisting in
+      try LXMgr.importPersonalLexicon(from: url, mode: mode, replaceExisting: replaceExisting)
+    }
+    host.exportPersonalLexicon = { url, mode in
+      try LXMgr.exportPersonalLexicon(to: url, mode: mode)
+    }
     // 以 provider 延遲注入：LXMgr.shared 僅在詞彙編輯頁真正開啟時才實體化，
     // 避免程序啟動階段就武裝其 KVO 路徑失效觀察器。
     host.phraseEditorDelegateProvider = { LXMgr.shared }

@@ -123,3 +123,11 @@ public protocol PrefMgrProtocol {
   var usingHotKeyRevLookup: Bool { get set }
   var usingHotKeyInputMode: Bool { get set }
 }
+
+extension PrefMgrProtocol {
+  /// 從既有唯音偏好推導 MixType 的基礎輸入來源；不另存第二份狀態，避免 preference drift。
+  public var mixTypeBaseInputProvider: Shared.MixTypeBaseInputProvider {
+    if cassetteEnabled { return .cin }
+    return pinyinTypingEnabled ? .pinyin : .zhuyin
+  }
+}

@@ -963,4 +963,80 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(learned.lastUsedAt != nil)
     #expect(saveCount == 1)
   }
+
+  @Test
+  func test_IH520_MixTypeBaseProviderDerivesFromExistingPreferences() throws {
+    guard let testHandler else {
+      Issue.record("Test handler is nil.")
+      return
+    }
+
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    #expect(testHandler.mixTypeBaseInputProvider == .cin)
+
+    testHandler.prefs.cassetteEnabled = false
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    #expect(testHandler.mixTypeBaseInputProvider == .pinyin)
+
+    testHandler.prefs.keyboardParser = KeyboardParser.ofStandard.rawValue
+    testHandler.ensureKeyboardParser()
+    #expect(testHandler.mixTypeBaseInputProvider == .zhuyin)
+  }
+
+  @Test
+  func test_IH521_NativePinyinHomaSeesPersonalLexicon() throws {
+    try verifyNativePhoneticPersonalLexicon(parser: .ofHanyuPinyin, expectedProvider: .pinyin)
+  }
+
+  @Test
+  func test_IH522_NativeZhuyinHomaSeesPersonalLexicon() throws {
+    try verifyNativePhoneticPersonalLexicon(parser: .ofStandard, expectedProvider: .zhuyin)
+  }
+
+  private func verifyNativePhoneticPersonalLexicon(
+    parser: KeyboardParser,
+    expectedProvider: Shared.MixTypeBaseInputProvider
+  ) throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let entry = LXAssembly.PersonalLexiconEntry(
+      phrase: "能留",
+      readings: ["ㄋㄥˊ", "ㄌㄧㄡˊ"],
+      pinyinTokens: ["neng", "liu"],
+      fullPinyinKey: "nengliu",
+      initialsKey: "nl",
+      source: .manual,
+      pinned: true
+    )
+    defer {
+      testHandler.currentLM.replacePersonalLexiconEntries([])
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    testHandler.currentLM.replacePersonalLexiconEntries([entry])
+    testHandler.prefs.cassetteEnabled = false
+    testHandler.prefs.furiousTypingEnabled = false
+    testHandler.prefs.keyboardParser = parser.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+    testHandler.clear()
+
+    #expect(testHandler.mixTypeBaseInputProvider == expectedProvider)
+    try testHandler.assembler.insertKeys(entry.readings.map { Homa.PossibleKey.singleKey($0) })
+    let overrideSucceeded = testHandler.assembler.overrideCandidate(
+      Homa.CandidatePair(keyArray: entry.readings, value: entry.phrase),
+      at: 0,
+      overrideType: .withSpecified,
+      isExplicitlyOverridden: true
+    )
+    #expect(overrideSucceeded)
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["能留"])
+  }
 }

@@ -32,6 +32,11 @@ public enum TypingMode: String, Equatable {
 }
 
 extension InputHandlerProtocol {
+  /// MixType 智慧層目前所依附的基礎輸入來源。
+  public var mixTypeBaseInputProvider: Shared.MixTypeBaseInputProvider {
+    prefs.mixTypeBaseInputProvider
+  }
+
   /// 當前打字模式（於 `currentTypingMethod == .vChewingFactory` 時才有意義）。
   ///
   /// 判定順序：Hybrid 僅在磁帶＋Hybrid 偏好＋拼音偏好＋實際拼音 parser 四者皆成立時啟用；
@@ -39,7 +44,7 @@ extension InputHandlerProtocol {
   /// 其餘以注拼槽是否拼音區分拼音鍵盤／注音鍵盤。
   /// `furiousTypingEnabled` pref 保留為「快速切換」的底層開關，本枚舉是其語義化抽象。
   public var typingMode: TypingMode {
-    if prefs.cassetteEnabled {
+    if mixTypeBaseInputProvider == .cin {
       if prefs.hybridCassettePinyinEnabled, prefs.pinyinTypingEnabled, composer.isPinyinMode {
         return .hybridCassettePinyin
       }

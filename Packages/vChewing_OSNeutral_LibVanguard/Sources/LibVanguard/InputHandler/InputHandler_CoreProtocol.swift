@@ -66,12 +66,18 @@ extension InputHandlerProtocol {
       if self.typingMode == .hybridCassettePinyin {
         return self.currentLM.lxQuerier.hybridPhoneticGrams(for: keyArray)
       }
+      if [.bopomofoKeyblock, .pinyinKeyblock, .pinyinFuriousTyping].contains(self.typingMode) {
+        return self.currentLM.lxQuerier.personalAwarePhoneticGrams(for: keyArray)
+      }
       return self.currentLM.lxQuerier.grams(for: keyArray)
     }
     assembler.gramAvailabilityChecker = { [weak self] keyArray in
       guard let self else { return false }
       if self.typingMode == .hybridCassettePinyin {
         return self.currentLM.lxQuerier.hybridPhoneticHasGrams(for: keyArray)
+      }
+      if [.bopomofoKeyblock, .pinyinKeyblock, .pinyinFuriousTyping].contains(self.typingMode) {
+        return self.currentLM.lxQuerier.personalAwarePhoneticHasGrams(for: keyArray)
       }
       return self.currentLM.lxQuerier.hasGrams(for: keyArray)
     }

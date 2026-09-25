@@ -455,6 +455,99 @@ final class LXMgrTests {
     #expect(mode.lexicon.lxQuerier.personalLexiconMatches(for: "tdny").first?.entry.phrase == "台達能源")
   }
 
+  @Test
+  func test029_LXMgr_PersonalLexiconUpdateAndDeletePersist() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let url = LXMgr.personalLexiconDataURL(mode: mode)
+    let entry = LXAssembly.PersonalLexiconEntry(
+      phrase: "台達能源",
+      readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["tai", "da", "neng", "yuan"],
+      fullPinyinKey: "taidanengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      selectionCount: 7,
+      pinned: true
+    )
+    defer {
+      mode.lexicon.replacePersonalLexiconEntries([])
+      try? FileManager.default.removeItem(at: url)
+    }
+    mode.lexicon.replacePersonalLexiconEntries([entry])
+    try LXMgr.savePersonalLexiconData(mode: mode)
+
+    let updated = try LXMgr.updatePersonalLexiconEntry(
+      id: entry.id,
+      phrase: "台達能源",
+      readings: entry.readings,
+      pinned: false,
+      disabled: true,
+      mode: mode
+    )
+    #expect(updated.id == entry.id)
+    #expect(updated.selectionCount == 7)
+    #expect(!updated.pinned)
+    #expect(updated.disabled)
+
+    mode.lexicon.replacePersonalLexiconEntries([])
+    LXMgr.loadPersonalLexiconData(mode: mode)
+    let reloaded = try #require(mode.lexicon.personalLexiconEntries.first)
+    #expect(reloaded.id == entry.id)
+    #expect(reloaded.disabled)
+
+    #expect(try LXMgr.removePersonalLexiconEntry(id: entry.id, mode: mode))
+    #expect(mode.lexicon.personalLexiconEntries.isEmpty)
+    mode.lexicon.replacePersonalLexiconEntries([entry])
+    LXMgr.loadPersonalLexiconData(mode: mode)
+    #expect(mode.lexicon.personalLexiconEntries.isEmpty)
+  }
+
+  @Test
+  func test030_LXMgr_PersonalLexiconImportMergeAndExportRoundTrip() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let persistedURL = LXMgr.personalLexiconDataURL(mode: mode)
+    let importURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("personal-import-\(UUID().uuidString).json")
+    let exportURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("personal-export-\(UUID().uuidString).json")
+    let existing = LXAssembly.PersonalLexiconEntry(
+      phrase: "台達能源",
+      readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["tai", "da", "neng", "yuan"],
+      fullPinyinKey: "taidanengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      pinned: true
+    )
+    let imported = LXAssembly.PersonalLexiconEntry(
+      phrase: "節能方案",
+      readings: ["ㄐㄧㄝˊ", "ㄋㄥˊ", "ㄈㄤ", "ㄢˋ"],
+      pinyinTokens: ["jie", "neng", "fang", "an"],
+      fullPinyinKey: "jienengfangan",
+      initialsKey: "jnfa",
+      source: .manual
+    )
+    defer {
+      mode.lexicon.replacePersonalLexiconEntries([])
+      try? FileManager.default.removeItem(at: persistedURL)
+      try? FileManager.default.removeItem(at: importURL)
+      try? FileManager.default.removeItem(at: exportURL)
+    }
+
+    mode.lexicon.replacePersonalLexiconEntries([existing])
+    try LXMgr.savePersonalLexiconData(mode: mode)
+    let importStore = LXAssembly.PersonalLexiconStore(entries: [imported])
+    try importStore.encode().write(to: importURL, options: [.atomic])
+
+    #expect(try LXMgr.importPersonalLexicon(from: importURL, mode: mode) == 1)
+    #expect(Set(mode.lexicon.personalLexiconEntries.map(\.phrase)) == ["台達能源", "節能方案"])
+
+    try LXMgr.exportPersonalLexicon(to: exportURL, mode: mode)
+    let exportedStore = LXAssembly.PersonalLexiconStore()
+    try exportedStore.load(data: Data(contentsOf: exportURL))
+    #expect(Set(exportedStore.entries.map(\.phrase)) == ["台達能源", "節能方案"])
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test

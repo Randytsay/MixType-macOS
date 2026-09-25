@@ -57,6 +57,36 @@ public final class SettingsUIHost {
   )
     -> () = { _, _, _ in }
 
+  // MARK: - MixType Personal Lexicon
+
+  public var personalLexiconEntries: (_ mode: Shared.InputMode) -> [LXAssembly.PersonalLexiconEntry] = { _ in [] }
+  public var addPersonalLexiconPhrase: (
+    _ phrase: String, _ mode: Shared.InputMode, _ pinned: Bool
+  ) throws -> LXAssembly.PersonalLexiconEntry = { _, _, _ in
+    throw CocoaError(.featureUnsupported)
+  }
+  public var updatePersonalLexiconEntry: (
+    _ id: UUID,
+    _ phrase: String,
+    _ readings: [String],
+    _ pinned: Bool,
+    _ disabled: Bool,
+    _ mode: Shared.InputMode
+  ) throws -> LXAssembly.PersonalLexiconEntry = { _, _, _, _, _, _ in
+    throw CocoaError(.featureUnsupported)
+  }
+  public var removePersonalLexiconEntry: (_ id: UUID, _ mode: Shared.InputMode) throws -> Bool = { _, _ in
+    throw CocoaError(.featureUnsupported)
+  }
+  public var importPersonalLexicon: (
+    _ url: URL, _ mode: Shared.InputMode, _ replaceExisting: Bool
+  ) throws -> Int = { _, _, _ in
+    throw CocoaError(.featureUnsupported)
+  }
+  public var exportPersonalLexicon: (_ url: URL, _ mode: Shared.InputMode) throws -> () = { _, _ in
+    throw CocoaError(.featureUnsupported)
+  }
+
   /// 語彙編輯器委派之延遲供應器（宿主注入 `{ LXMgr.shared }`）。
   /// 刻意不以值直接注入：`phraseEditorDelegate` 只在詞彙編輯頁（GUI）被使用，
   /// 沒有必要在程序啟動階段就實體化 `LXMgr.shared`（連帶提早武裝其 KVO 路徑失效觀察器）。

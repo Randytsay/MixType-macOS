@@ -177,6 +177,28 @@ extension LXAssembly {
         }
       }
 
+      /// 原生注音／拼音模式使用：保留既有語言模型結果，同時注入 Personal Lexicon。
+      public func personalAwarePhoneticGrams(for keyArray: [Homa.PossibleKey]) -> [Homa.Gram] {
+        let personal = lxFacade.lxPersonalLexicon.grams(for: keyArray)
+        let existing = grams(for: keyArray)
+        // 必須穩定合併，絕不可重新排序 `existing`。唯音若干路徑（尤其 mixed alnum／標點）
+        // 會依既有 LM 回傳順序決定首選；改以 probability/current 全域重排會改變 upstream 語義。
+        // Native 注音／拼音必須維持 upstream LM / POM 的首選語義，因此 existing 必須完整在前。
+        // 特別注意：existing 內可有「同顯示值、不同 previous/context」的 n-gram，這些都必須保留；
+        // 只對 Personal 做補充式去重，避免 Personal 複製一個 existing 已提供的顯示值。
+        var result = existing
+        let existingValues = Set(existing.map(\.current))
+        for gram in personal where !existingValues.contains(gram.current) {
+          result.append(gram)
+        }
+        return result
+      }
+
+      public func personalAwarePhoneticHasGrams(for keyArray: [String]) -> Bool {
+        if lxFacade.lxPersonalLexicon.hasGrams(for: keyArray) { return true }
+        return hasGrams(for: keyArray)
+      }
+
       /// MixType Hybrid 專用的輕量存在性檢查，供 Homa `insertKeys()` 使用。
       /// Hybrid 需要在 Cassette=ON 時仍承認 factory phonetic readings 存在。
       public func hybridPhoneticHasGrams(for keyArray: [String]) -> Bool {

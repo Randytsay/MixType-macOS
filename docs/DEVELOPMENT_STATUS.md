@@ -13,12 +13,16 @@ Specifications:
 
 ## Current phase
 
-**V0.2 first vertical slice — Personal Lexicon + explicit English override + selection learning**
+**V0.2 Batch A complete in code — Personal Lexicon product UI + Base Input Provider abstraction**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
 V0.2 now has a local Personal Lexicon model, full-Pinyin/initials Hybrid integration, deterministic
 local reading/key generation, atomic macOS persistence, and zero-candidate ASCII fallback.
+Batch A productizes that foundation: the modern Settings UI can manage Personal Lexicon entries,
+import/export native JSON, and switch the MixType base input provider among Zhuyin, Pinyin, and CIN.
+Native Zhuyin/Pinyin Homa paths can now consume Personal Lexicon entries without changing upstream
+LM/POM ordering; CIN continues to use the validated Hybrid path.
 
 ## Repository state
 
@@ -48,6 +52,11 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 - Explicit English override in Hybrid: `Enter` commits the raw token, `Shift+Space` commits raw token + half-width space even when Chinese candidates exist: ✅
 - Personal Lexicon activation safety-net reload for empty runtime stores with persisted JSON: ✅
 - Multiple Personal Lexicon entries may share the same full/initials key; actual selection increments `selectionCount`, updates `lastUsedAt`, reorders peers, and persists immediately: ✅
+- Personal Lexicon Settings UI: search/list/add/edit reading/pin/enable-disable/delete/import/export: ✅ code/tests
+- MixType Base Input Provider abstraction (`zhuyin` / `pinyin` / `cin`) derived from existing preferences: ✅
+- Settings UI base-provider switch with CIN validity guard: ✅
+- Native Zhuyin/Pinyin Homa can consume Personal Lexicon while preserving upstream gram/POM ordering: ✅
+- MixType Settings localization: English / Traditional Chinese / Simplified Chinese / Japanese: ✅
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -81,10 +90,10 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 
 ## Required next steps
 
-1. Install the current V0.2 build and verify `space + Enter → space`, `space + Shift+Space → space `, and `Shift+2 → @`.
-2. Verify `tdny` again after activation; locally persisted `台達能源` should be restored ahead of factory abbreviation `替代能源`.
-3. Continue broader English-intent reuse from MixedAlphanumerical heuristics so ordinary English words do not surface accidental Chinese abbreviation candidates by default.
-4. Add Settings UI CRUD/edit-pronunciation support, then automatic promotion from observed phrases.
+1. Commit/push/install Batch A and verify the new Personal Lexicon manager plus base-provider selector on the Mac.
+2. Implement Batch B auto-promotion: explicit selection observation → pending count → threshold promotion to Personal Lexicon.
+3. Reuse MixedAlphanumerical intent heuristics so ordinary English words do not surface accidental Chinese abbreviation candidates by default.
+4. Add auto-learning controls/threshold to Settings and complete Mac E2E for Zhuyin/Pinyin/CIN provider switching.
 
 ## V0.2 implementation status
 
@@ -104,10 +113,13 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 - [x] explicit English override regression (`Enter`, `Shift+Space`)
 - [x] Personal Lexicon activation reload regression
 - [x] same-key multi-entry Personal Lexicon selection learning + persistence regression
+- [x] Settings UI add/edit/remove/search/pin/disable
+- [x] native JSON import/export UI + management API
+- [x] pronunciation correction through editable Zhuyin reading sequence
+- [x] Base Input Provider abstraction and selector
+- [x] native Zhuyin/Pinyin Personal Lexicon Homa integration
 - [ ] installed-Mac E2E for `Shift+2 → @`
 - [ ] installed-Mac E2E for English override and `tdny` activation reload
-- [ ] Settings UI add/edit/remove/search
-- [ ] pronunciation correction UI for ambiguous readings
 - [ ] auto-promotion after explicit selections
 - [ ] broader English-intent reuse from MixedAlphanumerical heuristics
 
@@ -213,17 +225,29 @@ Personal peers without deleting alternatives. Factory/CIN candidates remain sepa
 to coexist in the merged Hybrid candidate list. Selection-learning and persistence regressions pass, as do
 the full LibVanguard package suite, LXMgrTests, and `make debug`.
 
+Batch A adds a real product-management surface and removes the remaining Cassette-only architecture
+assumption. `Shared.MixTypeBaseInputProvider` models Zhuyin, Pinyin, and CIN without introducing a second
+stored preference; the provider is derived from existing vChewing preferences, preventing state drift.
+The Settings dictionary pane now exposes a base-provider selector and a Personal Lexicon manager with
+search, add, edit/readings correction, pin, enable/disable, delete, import, and export. The macOS host
+routes all mutations through LXMgr atomic persistence/rollback APIs rather than letting UI code edit JSON.
+For native Zhuyin/Pinyin, Personal grams are appended only when the existing LM does not already provide
+that display value; the existing gram sequence and contextual duplicates remain untouched, preserving
+MixedAlphanumerical and Furious/POM semantics. Full LibVanguard tests pass after this stable-merge rule.
+SettingsUI tests are 17/17 PASS, LXMgrTests are 22/22 PASS, all four localization files lint successfully,
+and `make debug` passes on Xcode 27 / Swift 6.4.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: 79042b12 plus current Personal Lexicon selection-learning working-tree fix (commit pending)
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; zero-candidate ASCII fallback; Shift-ASCII routing; explicit English override; activation safety-net reload; same-key Personal selection learning/persistence
-Tests: full LibVanguard package tests PASS including IH110; PersonalLexiconTests PASS including same-key reorder; LXMgrTests 20/20 PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: f2c10c8e plus Batch A working tree (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration
+Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 22/22 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal Lexicon file persisted; explicit-English + activation-reload E2E pending installation of current fix
-Known issues: broad English-intent detection is not yet integrated into Hybrid, so ordinary English tokens may still surface accidental Pinyin-abbreviation candidates; users can now explicitly force ASCII with Enter / Shift+Space
-Next unfinished item: install current build and verify `space` English override, `Shift+2 → @`, and `tdny → 台達能源` after activation
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS on the previous installed build; Batch A Settings/provider UI E2E pending installation
+Known issues: automatic promotion is not implemented yet; broad English-intent detection is not yet integrated into Hybrid; native Zhuyin/Pinyin provider switching is code/test complete but still needs real-Mac UI E2E
+Next unfinished item: commit/push/install Batch A, then implement Batch B auto-promotion and English-intent reuse
 ```

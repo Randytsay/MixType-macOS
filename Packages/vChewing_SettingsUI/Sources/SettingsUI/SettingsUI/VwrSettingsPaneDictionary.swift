@@ -17,6 +17,10 @@
 
     public var body: some View {
       Form {
+        Section("i18n:MixType.BaseInput.section".i18n) {
+          VwrMixTypeBaseProviderPicker()
+        }
+
         // MARK: - User Data Folder Path Management
 
         Section {
@@ -148,6 +152,10 @@
             }
           }
           UserDef.kSuppressFactoryUnigramsOfKanaSyllables.renderUI()
+        }
+
+        Section("i18n:MixType.PersonalLexicon.section".i18n) {
+          VwrPersonalLexiconManager()
         }
 
         Section {

@@ -29,6 +29,8 @@ public final class LXMgr {
   public enum PersonalLexiconManagementError: Error, LocalizedError {
     case unresolvedReading(String)
     case invalidEntry(String)
+    case entryNotFound(UUID)
+    case malformedImport
 
     public var errorDescription: String? {
       switch self {
@@ -36,6 +38,10 @@ public final class LXMgr {
         return "Unable to resolve a local pronunciation for: \(phrase)"
       case let .invalidEntry(phrase):
         return "Unable to create a valid Personal Lexicon entry for: \(phrase)"
+      case let .entryNotFound(id):
+        return "Personal Lexicon entry not found: \(id.uuidString)"
+      case .malformedImport:
+        return "The Personal Lexicon import file is invalid."
       }
     }
   }
@@ -274,6 +280,135 @@ public final class LXMgr {
       throw error
     }
     return entry
+  }
+
+  /// 取得指定輸入模式的 Personal Lexicon 快照。若記憶體尚未載入但磁碟檔存在，先補載入。
+  public static func personalLexiconEntries(mode: Shared.InputMode) -> [LXAssembly.PersonalLexiconEntry] {
+    ensurePersonalLexiconLoaded(mode: mode)
+    return mode.lexicon.personalLexiconEntries
+  }
+
+  /// 編輯既有 Personal Lexicon。讀音變更時同步重建完整拼音／簡拼；保留 identity 與學習統計。
+  @discardableResult
+  public static func updatePersonalLexiconEntry(
+    id: UUID,
+    phrase: String,
+    readings: [String],
+    pinned: Bool,
+    disabled: Bool,
+    mode: Shared.InputMode
+  ) throws -> LXAssembly.PersonalLexiconEntry {
+    ensurePersonalLexiconLoaded(mode: mode)
+    let trimmedPhrase = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
+    let normalizedReadings = readings.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+      .filter { !$0.isEmpty }
+    guard !trimmedPhrase.isEmpty,
+          let existing = mode.lexicon.personalLexiconEntries.first(where: { $0.id == id })
+    else {
+      if mode.lexicon.personalLexiconEntries.contains(where: { $0.id == id }) == false {
+        throw PersonalLexiconManagementError.entryNotFound(id)
+      }
+      throw PersonalLexiconManagementError.invalidEntry(trimmedPhrase)
+    }
+    guard let keys = LXAssembly.PersonalLexiconKeyGenerator.generate(readings: normalizedReadings)
+    else {
+      throw PersonalLexiconManagementError.invalidEntry(trimmedPhrase)
+    }
+
+    let updated = LXAssembly.PersonalLexiconEntry(
+      id: existing.id,
+      phrase: trimmedPhrase,
+      readings: normalizedReadings,
+      pinyinTokens: keys.pinyinTokens,
+      fullPinyinKey: keys.fullPinyinKey,
+      initialsKey: keys.initialsKey,
+      source: existing.source,
+      selectionCount: existing.selectionCount,
+      createdAt: existing.createdAt,
+      updatedAt: Date(),
+      lastUsedAt: existing.lastUsedAt,
+      pinned: pinned,
+      disabled: disabled,
+      schemaVersion: existing.schemaVersion
+    )
+    let previousEntries = mode.lexicon.personalLexiconEntries
+    guard mode.lexicon.upsertPersonalLexiconEntry(updated) else {
+      throw PersonalLexiconManagementError.invalidEntry(trimmedPhrase)
+    }
+    do {
+      try savePersonalLexiconData(mode: mode)
+      return updated
+    } catch {
+      mode.lexicon.replacePersonalLexiconEntries(previousEntries)
+      throw error
+    }
+  }
+
+  @discardableResult
+  public static func removePersonalLexiconEntry(
+    id: UUID,
+    mode: Shared.InputMode
+  ) throws -> Bool {
+    ensurePersonalLexiconLoaded(mode: mode)
+    let previousEntries = mode.lexicon.personalLexiconEntries
+    guard mode.lexicon.removePersonalLexiconEntry(id: id) else { return false }
+    do {
+      try savePersonalLexiconData(mode: mode)
+      return true
+    } catch {
+      mode.lexicon.replacePersonalLexiconEntries(previousEntries)
+      throw error
+    }
+  }
+
+  /// 匯入原生 versioned JSON。預設 merge；同 id 或同 phrase+reading 以匯入資料覆蓋。
+  @discardableResult
+  public static func importPersonalLexicon(
+    from url: URL,
+    mode: Shared.InputMode,
+    replaceExisting: Bool = false
+  ) throws -> Int {
+    let accessGranted = url.startAccessingSecurityScopedResource()
+    defer { if accessGranted { url.stopAccessingSecurityScopedResource() } }
+    let data = try Data(contentsOf: url)
+    let importedStore = LXAssembly.PersonalLexiconStore()
+    do {
+      try importedStore.load(data: data)
+    } catch {
+      throw PersonalLexiconManagementError.malformedImport
+    }
+    let importedEntries = importedStore.entries
+    let previousEntries = mode.lexicon.personalLexiconEntries
+    if replaceExisting {
+      mode.lexicon.replacePersonalLexiconEntries(importedEntries)
+    } else {
+      var merged = previousEntries
+      for imported in importedEntries {
+        if let index = merged.firstIndex(where: {
+          $0.id == imported.id || ($0.phrase == imported.phrase && $0.readings == imported.readings)
+        }) {
+          merged[index] = imported
+        } else {
+          merged.append(imported)
+        }
+      }
+      mode.lexicon.replacePersonalLexiconEntries(merged)
+    }
+    do {
+      try savePersonalLexiconData(mode: mode)
+      return importedEntries.count
+    } catch {
+      mode.lexicon.replacePersonalLexiconEntries(previousEntries)
+      throw error
+    }
+  }
+
+  public static func exportPersonalLexicon(to url: URL, mode: Shared.InputMode) throws {
+    ensurePersonalLexiconLoaded(mode: mode)
+    let accessGranted = url.startAccessingSecurityScopedResource()
+    defer { if accessGranted { url.stopAccessingSecurityScopedResource() } }
+    let data = try mode.lexicon.exportPersonalLexiconData()
+    try data.write(to: url, options: [.atomic])
   }
 
   public static func loadUserAssociatesData() {
