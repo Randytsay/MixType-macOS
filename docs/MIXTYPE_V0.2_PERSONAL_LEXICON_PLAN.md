@@ -1,7 +1,7 @@
 # MixType V0.2 Personal Lexicon + Auto Promotion Plan
 
-Status: planned  
-Depends on: V0.1 Hybrid candidate path being stable
+Status: in progress — core/persistence/Hybrid lookup implemented; installed-Mac E2E and UI pending
+Depends on: V0.1 Hybrid candidate path stable and runtime-accepted ✅
 
 ## 1. Goal
 

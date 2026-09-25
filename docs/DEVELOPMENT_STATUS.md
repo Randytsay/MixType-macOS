@@ -4,18 +4,21 @@ This file is the canonical handoff/status record for active MixType development.
 
 ## Current milestone
 
-**V0.1 — Hybrid CIN + Pinyin**
+**V0.2 — Personal Lexicon + ASCII fallback**
 
-Specification:
+Specifications:
 
-`docs/MIXTYPE_V0.1_HYBRID_PLAN.md`
+- `docs/MIXTYPE_V0.1_HYBRID_PLAN.md` — V0.1 accepted baseline
+- `docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md` — active milestone
 
 ## Current phase
 
-**V0.1 runtime acceptance complete; V0.2 Personal Lexicon next**
+**V0.2 first vertical slice — core/persistence/Hybrid lookup implemented**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
+V0.2 now has a local Personal Lexicon model, full-Pinyin/initials Hybrid integration, deterministic
+local reading/key generation, atomic macOS persistence, and zero-candidate ASCII fallback.
 
 ## Repository state
 
@@ -35,6 +38,12 @@ Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection
 - Hybrid Phase D Settings UI: ✅; SwiftUI/AppKit cassette panes expose the Hybrid toggle and enable the existing Pinyin parser when Hybrid is turned on
 - V0.1 Phase A read-only implementation audit: ✅ (`docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md`)
 - V0.2 Personal Lexicon + Auto Promotion specification: ✅ (`docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md`)
+- V0.2 feature branch: ✅ (`feat/personal-lexicon-v02`)
+- Personal Lexicon versioned local model + JSON round-trip: ✅
+- full-Pinyin / initials Hybrid candidate integration: ✅
+- local factory reading resolution + Tekkon Pinyin-key generation: ✅
+- atomic macOS persistence under the existing user-data directory: ✅
+- zero-candidate ASCII fallback, including prior Chinese composition: ✅
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -68,9 +77,28 @@ Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection
 
 ## Required next steps
 
-1. Start V0.2 Personal Lexicon on a dedicated feature branch from the accepted V0.1 branch.
-2. Add a safe ASCII fallback when Hybrid has no Chinese candidate instead of buzzing.
-3. Add local Personal Lexicon lookup for exact full Pinyin and initials (`taidanengyuan` / `tdny`).
+1. Install the V0.2 feature build and seed one local, uncommitted `台達能源` entry for E2E validation.
+2. Verify `taidanengyuan → 台達能源`, `tdny → 台達能源`, and zero-candidate ASCII fallback on macOS.
+3. Add Settings UI CRUD/edit-pronunciation support, then automatic promotion/learning.
+
+## V0.2 implementation status
+
+- [x] versioned Personal Lexicon entry/document/store
+- [x] full-Pinyin and initials indexes
+- [x] Hybrid ordering: CIN exact remains first; Personal full/initials participate deterministically
+- [x] Personal entries feed Homa instead of bypassing composition semantics
+- [x] local reading resolution via one low-frequency exact-value TextMap scan + longest-segment DP
+- [x] Tekkon-derived normalized full Pinyin / initials
+- [x] JSON load/save with future-schema fail-closed behavior
+- [x] macOS atomic persistence (`personal-lexicon-cht.json` / `personal-lexicon-chs.json`)
+- [x] manual host API taking only a Chinese phrase
+- [x] no-candidate Space/Enter ASCII fallback without buzzer
+- [x] Chinese composition + unknown ASCII fallback regression
+- [ ] installed-Mac E2E for `台達能源`
+- [ ] Settings UI add/edit/remove/search
+- [ ] pronunciation correction UI for ambiguous readings
+- [ ] auto-promotion after explicit selections
+- [ ] broader English-intent reuse from MixedAlphanumerical heuristics
 
 ## V0.1 phase checklist
 
