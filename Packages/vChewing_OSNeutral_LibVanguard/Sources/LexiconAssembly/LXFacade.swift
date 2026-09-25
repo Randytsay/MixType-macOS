@@ -162,6 +162,28 @@ extension LXAssembly {
         )
       }
 
+      /// MixType Hybrid 專用的 Homa phonetic gram 查詢。
+      ///
+      /// Cassette 開啟時，一般 `grams(for:)` 仍保留使用者／暫存詞，但會刻意停用
+      /// factory phonetic lexicon。Hybrid 的 Homa 組字器需要同時看到兩者，因此在
+      /// 不改寫全域 Cassette 設定的前提下合併 factory phonetic 與既有查詢結果。
+      public func hybridPhoneticGrams(for keyArray: [Homa.PossibleKey]) -> [Homa.Gram] {
+        let factory = hybridPhoneticFactoryGrams(for: keyArray)
+        let existing = grams(for: keyArray)
+        return (factory + existing).sorted { lhs, rhs in
+          if lhs.probability != rhs.probability { return lhs.probability > rhs.probability }
+          return lhs.current < rhs.current
+        }
+      }
+
+      /// MixType Hybrid 專用的輕量存在性檢查，供 Homa `insertKeys()` 使用。
+      /// Hybrid 需要在 Cassette=ON 時仍承認 factory phonetic readings 存在。
+      public func hybridPhoneticHasGrams(for keyArray: [String]) -> Bool {
+        guard !keyArray.isEmpty, keyArray.allSatisfy({ !$0.isEmpty }) else { return false }
+        if lxFacade.hasUnigramsForFast(keyArray: keyArray) { return true }
+        return lxFacade.hasFactoryCoreUnigramsFor(keyArray: keyArray)
+      }
+
       /// 給定讀音索引鍵陣列（相容舊版 `[String]` 介面），回傳經處理的單元圖陣列。
       ///
       /// 與 `grams(for: [Homa.PossibleKey])` 的差異：本重載接受顯式的 `partiallyMatch` 參數，

@@ -35,10 +35,7 @@ public final class MockInputHandler: @MainActor InputHandlerProtocol {
       gramQuerier: { _ in [] }
     )
     assembler.maxSegLength = prefs.maxCandidateLength
-    assembler.gramQuerier = { [weak self] keyArray in
-      guard let self else { return [] }
-      return self.currentLM.lxQuerier.grams(for: keyArray)
-    }
+    configureAssemblerGramAccess()
     ensureKeyboardParser()
   }
 

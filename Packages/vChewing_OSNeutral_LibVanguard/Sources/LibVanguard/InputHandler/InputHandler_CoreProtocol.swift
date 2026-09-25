@@ -55,6 +55,28 @@ public protocol InputHandlerProtocol: AnyObject {
 // MARK: - InputHandlerProtocol 便利存取器
 
 extension InputHandlerProtocol {
+  /// 將 Homa 組字器的語言模型查詢綁定到目前 InputHandler。
+  ///
+  /// 一般模式維持既有 LXFacade 查詢；MixType Hybrid 在 Cassette 開啟時則改走
+  /// phonetic-aware 查詢，使 Homa 能實際插入由 Pinyin 候選選中的 factory readings。
+  /// 此判定在每次 query 時動態計算，因此 Hybrid OFF 完全保留 upstream 行為。
+  public func configureAssemblerGramAccess() {
+    assembler.gramQuerier = { [weak self] keyArray in
+      guard let self else { return [] }
+      if self.typingMode == .hybridCassettePinyin {
+        return self.currentLM.lxQuerier.hybridPhoneticGrams(for: keyArray)
+      }
+      return self.currentLM.lxQuerier.grams(for: keyArray)
+    }
+    assembler.gramAvailabilityChecker = { [weak self] keyArray in
+      guard let self else { return false }
+      if self.typingMode == .hybridCassettePinyin {
+        return self.currentLM.lxQuerier.hybridPhoneticHasGrams(for: keyArray)
+      }
+      return self.currentLM.lxQuerier.hasGrams(for: keyArray)
+    }
+  }
+
   /// 混輸暫存 ASCII 緩衝區（`mixedAlnumConfig` 之薄存取器；維持既有呼叫端不變）。
   public var mixedAlphanumericalBuffer: String {
     get { mixedAlnumConfig.buffer }

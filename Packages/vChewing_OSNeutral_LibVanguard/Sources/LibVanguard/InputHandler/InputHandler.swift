@@ -31,16 +31,7 @@ public final class InputHandler: InputHandlerProtocol {
     )
     /// 同步組字器單個詞的幅節長度上限。
     assembler.maxSegLength = prefs.maxCandidateLength
-    /// 將真正的 LM 查詢閉包綁至組字器。
-    assembler.gramQuerier = { [weak self] keyArray in
-      guard let self else { return [] }
-      return self.currentLM.lxQuerier.grams(for: keyArray)
-    }
-    /// 將輕量級在庫檢查閉包綁至組字器，避免 insertKeys() 用完整查詢做 existence check。
-    assembler.gramAvailabilityChecker = { [weak self] keyArray in
-      guard let self else { return false }
-      return self.currentLM.lxQuerier.hasGrams(for: keyArray)
-    }
+    configureAssemblerGramAccess()
     /// 注拼槽初期化。
     ensureKeyboardParser()
   }
