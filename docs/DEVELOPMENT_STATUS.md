@@ -134,8 +134,9 @@ The previous IME was backed up under the ignored `Build/Backups/` directory befo
 Codesign verification passes, OpenVanilla remains installed with its distinct bundle identifier,
 and the persisted runtime preferences report Cassette + Hybrid + Pinyin enabled. The private cassette
 baseline is already verified. Full-Pinyin lookup is visible in the real candidate window; the remaining
-manual runtime gate is to re-verify Pinyin candidate selection / ordinary digit passthrough, then finish
-candidate ordering and abbreviation checks in representative applications.
+real runtime now confirms `cai` candidate label `5` selects `蔡` without buzzer, and ordinary digit
+passthrough remains working. The remaining V0.1 runtime gate is full-Pinyin phrase selection plus
+abbreviation candidate ordering/selection in representative applications.
 
 ## Handoff template
 
@@ -147,7 +148,7 @@ Latest commit: 90972db0
 Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics; Phase D Settings UI/localization; Phase E factory-Pinyin source-gate fix; Hybrid numeric-selection and digit-passthrough fix; stable Hybrid candidate-source resolution; Hybrid Homa phonetic assembly path
 Tests: Hybrid filter 11/11 PASS; full LibVanguard package tests PASS (247 InputHandler tests); SettingsUI 17 tests PASS; localization lint PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
-Mac runtime validation: clean baseline PASS; private CIN PASS; real full-Pinyin candidates visible; runtime trace proved `cai` numeric routing/source resolution correct and isolated Homa insertion as the remaining failure; build `90972db0` installed/codesign PASS; Cassette + Hybrid + Pinyin prefs enabled
-Known issues: GitHub Actions has not run for the feature branch; `cai` numeric Pinyin selection needs one real keystroke re-check on build `90972db0`; final Hybrid ordering/abbreviation checks remain
-Next unfinished item: re-test `cai` + displayed numeric candidate key on build `90972db0`; if PASS, verify abbreviation and final candidate ordering in the installed feature build
+Mac runtime validation: clean baseline PASS; private CIN PASS; real full-Pinyin candidates visible; `cai → displayed 5 → 蔡` PASS on build `90972db0`; ordinary standalone digits PASS; Cassette + Hybrid + Pinyin prefs enabled
+Known issues: GitHub Actions has not run for the feature branch; final full-Pinyin phrase and abbreviation ordering/selection checks remain
+Next unfinished item: verify full-Pinyin phrase selection/commit, then abbreviation candidate ordering/selection in the installed feature build
 ```
