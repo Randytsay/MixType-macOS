@@ -12,10 +12,10 @@ Specification:
 
 ## Current phase
 
-**V0.1 Phase B — CIN + Pinyin candidate providers and merge**
+**V0.1 Phase D — Settings UI and macOS runtime validation**
 
 The clean Mac baseline has passed, including real IME installation and cassette/CIN input.
-Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fusion remains Phase B.
+Phase A routing and Phase B/C Hybrid candidate/selection semantics are implemented and pass Mac tests.
 
 ## Repository state
 
@@ -30,6 +30,8 @@ Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fu
 - real CIN/Boshiamy cassette baseline: ✅; a local private CIN was loaded and real cassette composition/commit was verified
 - V0.1 feature branch: ✅ (`feat/hybrid-input-v01`)
 - Hybrid Phase A implementation: ✅; dedicated routing seam implemented and validated on the Mac
+- Hybrid Phase B implementation: ✅; CIN exact/quick + full-Pinyin + abbreviated-Pinyin providers, source ordering, and deduplication
+- Hybrid Phase C implementation: ✅; CIN preserves cassette commit semantics, Pinyin/abbreviation selections write real readings into Homa
 - V0.1 Phase A read-only implementation audit: ✅ (`docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md`)
 - V0.2 Personal Lexicon + Auto Promotion specification: ✅ (`docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md`)
 
@@ -57,14 +59,18 @@ Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fu
 - The Mac baseline gate passed before the feature branch was created.
 - Phase A adds a default-off Hybrid preference, semantic `hybridCassettePinyin` mode, and a dedicated single-event typewriter route. The Phase A typewriter deliberately delegates to cassette behavior only; it does not invoke cassette and Pinyin typewriters sequentially.
 - Focused Phase A tests cover the mode matrix and a cassette-compatible single-route sentinel.
+- Phase B replaces the temporary cassette delegation with one Hybrid-owned raw-key buffer and read-only candidate providers. The coordinator never sequentially invokes the cassette and BPMF typewriters on the same event.
+- Phase B candidate order is deterministic: CIN exact → CIN quick → full Pinyin → abbreviated Pinyin; duplicate output values keep the earliest source, preserving CIN priority.
+- Phase C applies Pinyin and abbreviation selections to Homa using each candidate's real Zhuyin `keyArray`; CIN selections retain the existing cassette direct-commit behavior.
+- Hybrid raw input displays the literal typed keys rather than translated cassette radicals, so Pinyin input remains readable while composing.
 - V0.2 Personal Lexicon architecture, reading resolution, auto-promotion policy, persistence, ranking and acceptance tests are now specified.
 
 ## Required next steps
 
-1. Begin Phase B on `feat/hybrid-input-v01`: add non-mutating CIN/full-Pinyin/abbreviated-Pinyin candidate providers and deterministic merge/deduplication.
-2. Add focused tests proving CIN exact priority, Pinyin visibility, abbreviation visibility, and deduplication.
-3. Preserve the invariant that one physical key event has one Hybrid coordinator owner; never invoke the cassette and BPMF typewriters sequentially against shared state.
-4. Keep Personal Lexicon, mixed English detection, and Settings UI work out of Phase B.
+1. Add the Phase D Settings UI switch and localization for the Hybrid preference.
+2. Install the feature build on the Mac, enable Hybrid + Pinyin, and verify real factory-dictionary Pinyin alongside the private CIN.
+3. Verify real candidate ordering and selection in representative macOS applications.
+4. Keep Personal Lexicon and mixed English detection out of V0.1.
 
 ## V0.1 phase checklist
 
@@ -77,19 +83,19 @@ Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fu
 
 ### Phase B — candidate providers and merge
 
-- [ ] CIN candidate provider
-- [ ] full-Pinyin candidate provider
-- [ ] abbreviated-Pinyin candidate provider
-- [ ] deterministic source ordering
-- [ ] candidate deduplication
-- [ ] CIN exact candidate remains first by default
+- [x] CIN candidate provider
+- [x] full-Pinyin candidate provider
+- [x] abbreviated-Pinyin candidate provider
+- [x] deterministic source ordering
+- [x] candidate deduplication
+- [x] CIN exact candidate remains first by default
 
 ### Phase C — selection semantics
 
-- [ ] CIN selection preserves cassette semantics
-- [ ] Pinyin selection uses Homa insertion/override semantics
-- [ ] abbreviation selection uses the same stable insertion path
-- [ ] regression tests
+- [x] CIN selection preserves cassette semantics
+- [x] Pinyin selection uses Homa insertion/override semantics
+- [x] abbreviation selection uses the same stable insertion path
+- [x] regression tests
 
 ### Phase D — Settings UI
 
@@ -109,9 +115,9 @@ Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fu
 
 ## Current blockers
 
-The Mac baseline blocker is resolved. Phase A commit `125bea1161b9f76d1b4be798adad9e93776c9531` passed the focused Hybrid tests on Xcode 27 / Swift 6.4 (2 tests), the full LibVanguard package test suite, and `make debug` on the Mac. The WebCodex VPS does not currently have a Swift executable, so it cannot compile or run these tests locally.
+The Mac baseline blocker is resolved. Phase A commit `125bea1161b9f76d1b4be798adad9e93776c9531` passed its focused Hybrid tests on Xcode 27 / Swift 6.4. The current Phase B/C work passes 5 focused Hybrid tests, the full LibVanguard package suite (including 241 InputHandler tests), and `make debug` on the Mac. The WebCodex VPS does not currently have a Swift executable, so it cannot compile or run these tests locally.
 
-Draft PR #3 exists to provide a review surface. No GitHub Actions run was observed for the feature commit, so Mac validation is the current authoritative compile/test evidence for Phase A.
+Draft PR #3 exists to provide a review surface. No GitHub Actions run was observed for the feature branch, so Mac validation is the current authoritative compile/test evidence.
 
 ## Handoff template
 
@@ -119,11 +125,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/hybrid-input-v01
-Latest commit: 125bea1161b9f76d1b4be798adad9e93776c9531
-Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A preference/mode/dedicated route/test implementation and Mac validation
-Tests: Phase A Hybrid filter 2/2 PASS; full LibVanguard package tests PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: pending Phase B/C commit
+Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A routing; Phase B candidate fusion; Phase C selection semantics
+Tests: Hybrid filter 5/5 PASS; full LibVanguard package tests PASS (241 InputHandler tests); `make debug` PASS on Xcode 27 / Swift 6.4
 CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
-Mac runtime validation: clean baseline PASS; Phase A compile/tests/build PASS
-Known issues: no Phase B candidate fusion yet, so the current installed/Phase A behavior still exposes cassette semantics only
-Next unfinished item: implement Phase B actual CIN + full-Pinyin + abbreviated-Pinyin candidate providers and deterministic merge
+Mac runtime validation: clean baseline PASS; Phase B/C compile/tests/build PASS; feature build installation and real Hybrid typing still pending
+Known issues: Phase D Settings UI is not implemented yet; Hybrid can currently be enabled only through the persisted preference
+Next unfinished item: commit/push Phase B/C, then add Phase D Settings UI and perform real Hybrid typing validation
 ```

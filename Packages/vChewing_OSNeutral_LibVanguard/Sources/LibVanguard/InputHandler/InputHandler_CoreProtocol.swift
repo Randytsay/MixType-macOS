@@ -624,6 +624,7 @@ extension InputHandlerProtocol {
         isHanyuPinyin: prefs.showHanyuPinyinInCompositionBuffer
       )
     }
+    if typingMode == .hybridCassettePinyin { return calligrapher }
     if !prefs.showTranslatedStrokesInCompositionBuffer { return calligrapher }
     return calligrapher.map(\.description).map {
       currentLM.convertCassetteKeyToDisplay(char: $0)

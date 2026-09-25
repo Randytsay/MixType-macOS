@@ -270,6 +270,20 @@ public final class MockSession: @MainActor SessionCoreProtocol {
       )
       if !associates.candidates.isEmpty { result = associates }
     case .ofInputting where (0 ..< state.candidates.count).contains(index):
+      if inputHandler.typingMode == .hybridCassettePinyin {
+        let selectedValue = state.candidates[index]
+        guard let outcome = inputHandler.confirmHybridCandidateSelection(selectedValue) else {
+          vCTestLog("TEST SESSION ERROR: Hybrid candidate source resolution failed.")
+          return
+        }
+        switch outcome {
+        case let .commit(text):
+          switchState(.ofCommitting(textToCommit: text))
+        case .composition:
+          switchState(inputHandler.generateStateOfInputting())
+        }
+        return
+      }
       // 狂拼模式：前方候選就地選字（與生產端 InputSession_Delegates 對應）。
       // 使用者顯式選字＝符合 POM 記憶的明確意志，故傳入 memorizePOM: true。
       if inputHandler.isFuriousTypingModeEffective {

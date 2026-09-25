@@ -3,6 +3,7 @@
 // This code is released under the SPDX-License-Identifier: `LGPL-3.0-or-later`.
 
 import Foundation
+import Homa
 import SwiftExtension
 
 extension LXAssembly.LXFacade {
@@ -82,6 +83,15 @@ extension LXAssembly.LXFacade {
 }
 
 extension LXAssembly.LXFacade.LXQuerier {
+  /// Hybrid 專用：以指定原始鍵碼唯讀查詢磁帶的精確候選。
+  ///
+  /// 此 API 不經一般 `grams(for:)` 管線，避免 Hybrid 在辨識候選來源時把
+  /// factory / user phrase / Pinyin 結果誤標為 cassette。
+  public func cassetteGrams(for key: String) -> [Homa.Gram] {
+    guard !key.isEmpty else { return [] }
+    return LXAssembly.LXFacade.lxCassette.unigramsFor(key: key, keyArray: [key])
+  }
+
   /// 磁帶模式專用函式：調取 `%quick` 快速候選結果。
   /// - Parameter key: 按鍵字元。
   /// - Returns: 結果。
