@@ -29,6 +29,8 @@ No MixType hybrid engine implementation has started yet.
 - real CIN/Boshiamy cassette baseline: ⬜
 - V0.1 feature branch: ⬜
 - Hybrid implementation: ⬜
+- V0.1 Phase A read-only implementation audit: ✅ (`docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md`)
+- V0.2 Personal Lexicon + Auto Promotion specification: ✅ (`docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md`)
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -43,6 +45,12 @@ No MixType hybrid engine implementation has started yet.
 - Local targeted IME product build: `swift build -c debug --product vChewing` — **BLOCKED by the same missing `PreviewsMacros` plugin**.
 - Upstream CI for the shared code base `62936e41e9319dce482a291bf13b6bfaa194c6f7`: Linux LibVanguard, Windows LibVanguard, and macOS SPM tests/package workflows all completed successfully. This supports that the observed local failures are toolchain-environment failures rather than known source regressions.
 - No IME installation, OpenVanilla coexistence, private CIN loading, or real cassette typing test was attempted because the build/test baseline gate has not passed locally.
+
+## Planning completed while Mac baseline is blocked
+
+- Phase A exact preference/routing/typewriter/test touchpoints have been audited read-only.
+- Phase A is intentionally not implemented until the full-Xcode Mac baseline gate passes.
+- V0.2 Personal Lexicon architecture, reading resolution, auto-promotion policy, persistence, ranking and acceptance tests are now specified.
 
 ## Required next steps
 
