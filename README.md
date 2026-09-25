@@ -29,6 +29,8 @@ MixType 採用 GitHub 作為唯一開發真相來源，CoS Mac、WebCodex 與其
 - [Development Workflow](./docs/DEVELOPMENT_WORKFLOW.md) — 分支、reconciliation、CoS Mac / WebCodex 分工、測試與真機驗收規則
 - [Development Status](./docs/DEVELOPMENT_STATUS.md) — 目前做到哪、下一步與跨 Agent 交接狀態
 - [V0.1 Hybrid CIN + Pinyin Plan](./docs/MIXTYPE_V0.1_HYBRID_PLAN.md) — 第一階段 Hybrid 輸入技術規格
+- [V0.1 Phase A Implementation Audit](./docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md) — Xcode baseline 完成後可直接實作的檔案／函式／測試切入點
+- [V0.2 Personal Lexicon Plan](./docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md) — 個人詞庫、拼音／簡拼鍵、自動學習與晉升規格
 
 
 ## Upstream 與授權
