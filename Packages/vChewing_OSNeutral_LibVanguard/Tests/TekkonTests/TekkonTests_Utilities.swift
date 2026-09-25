@@ -96,4 +96,10 @@ struct TekkonTestsUtilities {
     // 含不允許字元（非半形英數）時放棄轉換、原樣回傳。
     #expect(Tekkon.cnvHanyuPinyinToPhona(targetJoined: "nǐ") == "nǐ")
   }
+
+  @Test("[Tekkon] CnvHanyuPinyinTextbookStyleToNumeric")
+  func testTextbookPinyinToNumeric() async throws {
+    #expect(Tekkon.cnvHanyuPinyinTextbookStyleToNumeric(targetJoined: "huì líng") == "hui4 ling2")
+    #expect(Tekkon.cnvHanyuPinyinTextbookStyleToNumeric(targetJoined: "nǚ ér") == "nv3 er2")
+  }
 }

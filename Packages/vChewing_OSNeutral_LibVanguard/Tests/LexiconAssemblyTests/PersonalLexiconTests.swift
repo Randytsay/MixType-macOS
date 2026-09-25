@@ -90,6 +90,30 @@ struct PersonalLexiconTests {
   }
 
   @Test
+  func testPersonalLexiconReadingParserAcceptsZhuyinAndTonedPinyin() throws {
+    let zhuyin = try #require(
+      LXAssembly.PersonalLexiconReadingParser.parse("ㄏㄨㄟˋ ㄌㄧㄥˊ")
+    )
+    let numbered = try #require(
+      LXAssembly.PersonalLexiconReadingParser.parse("hui4 ling2")
+    )
+    let marked = try #require(
+      LXAssembly.PersonalLexiconReadingParser.parse("huì líng")
+    )
+
+    #expect(zhuyin == ["ㄏㄨㄟˋ", "ㄌㄧㄥˊ"])
+    #expect(numbered == zhuyin)
+    #expect(marked == zhuyin)
+
+    let keys = try #require(LXAssembly.PersonalLexiconKeyGenerator.generate(readings: marked))
+    #expect(keys.pinyinTokens == ["hui", "ling"])
+    #expect(keys.fullPinyinKey == "huiling")
+    #expect(keys.initialsKey == "hl")
+
+    #expect(LXAssembly.PersonalLexiconReadingParser.parse("hui ling") == nil)
+  }
+
+  @Test
   func testPersonalLexiconReadingResolverUsesLongestFactorySegments() throws {
     defer { LXAssembly.LXFacade.disconnectFactoryDictionary() }
     let fixture = """

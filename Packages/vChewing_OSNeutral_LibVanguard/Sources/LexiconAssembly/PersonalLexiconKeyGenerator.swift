@@ -6,6 +6,38 @@ import Foundation
 import Tekkon
 
 extension LXAssembly {
+  public enum PersonalLexiconReadingParser {
+    public static func parse(_ raw: String) -> [String]? {
+      let tokens = raw.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+      guard !tokens.isEmpty else { return nil }
+      var result: [String] = []
+      result.reserveCapacity(tokens.count)
+
+      for token in tokens {
+        if token.unicodeScalars.contains(where: { (0x3105 ... 0x312F).contains($0.value) }) {
+          result.append(token)
+          continue
+        }
+
+        let numeric = Tekkon.cnvHanyuPinyinTextbookStyleToNumeric(targetJoined: token)
+        guard numeric.unicodeScalars.contains(where: { (0x31 ... 0x35).contains($0.value) }) else {
+          return nil
+        }
+        let phona = Tekkon.cnvHanyuPinyinToPhona(targetJoined: numeric, newToneOne: "")
+        guard !phona.isEmpty,
+              phona != numeric,
+              phona.unicodeScalars.allSatisfy({
+                (0x3105 ... 0x312F).contains($0.value) || "ˊˇˋ˙".unicodeScalars.contains($0)
+              })
+        else {
+          return nil
+        }
+        result.append(phona)
+      }
+      return result
+    }
+  }
+
   public enum PersonalLexiconKeyGenerator {
     public struct Keys: Sendable, Equatable {
       public let pinyinTokens: [String]
@@ -137,6 +169,14 @@ extension LXAssembly {
       expectedCount: Int,
       readingChains: [String: [[String]]]
     ) -> [String]? {
+      if expectedCount == 1,
+         phrase.unicodeScalars.count == 1,
+         let candidates = LXFacade.getFactoryReverseLookupData(with: phrase) {
+        for candidate in candidates {
+          let readings = candidate.split(separator: "-").map(String.init)
+          if readings.count == 1, !readings[0].isEmpty { return readings }
+        }
+      }
       guard let candidates = readingChains[phrase] else { return nil }
       for readings in candidates {
         guard readings.count == expectedCount, readings.allSatisfy({ !$0.isEmpty }) else { continue }

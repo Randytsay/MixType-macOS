@@ -390,7 +390,7 @@
           TextField("i18n:MixType.PersonalLexicon.phrase".i18n, text: $phrase)
 
           if isEditing {
-            TextField("i18n:MixType.PersonalLexicon.readings".i18n, text: $readingsText)
+            TextField("i18n:MixType.PersonalLexicon.readingsFlexible".i18n, text: $readingsText)
             if let generatedKeys {
               LabeledContent(
                 "i18n:MixType.PersonalLexicon.fullPinyin".i18n,
@@ -439,7 +439,7 @@
     }
 
     private var readings: [String] {
-      readingsText.split(whereSeparator: { $0.isWhitespace }).map(String.init)
+      LXAssembly.PersonalLexiconReadingParser.parse(readingsText) ?? []
     }
 
     private var generatedKeys: LXAssembly.PersonalLexiconKeyGenerator.Keys? {

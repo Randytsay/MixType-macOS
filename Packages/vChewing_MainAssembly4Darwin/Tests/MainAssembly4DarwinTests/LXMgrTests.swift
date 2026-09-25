@@ -579,6 +579,25 @@ final class LXMgrTests {
     #expect(restored.selectionCount == 1)
   }
 
+  @Test
+  func test032_LXMgr_ProductionFactoryDerivesHuiLingCorrectly() throws {
+    defer { LXAssembly.LXFacade.disconnectFactoryDictionary() }
+    let path = try #require(LXMgr.getCoreDictionaryDBPath(factory: true))
+    LXMgr.connectCoreDB(dbPath: path)
+
+    let readings = try #require(
+      LXAssembly.PersonalLexiconReadingResolver.resolveFactoryReadings(for: "卉羚")
+    )
+    #expect(readings == ["ㄏㄨㄟˋ", "ㄌㄧㄥˊ"])
+
+    let entry = try #require(
+      LXAssembly.PersonalLexiconReadingResolver.makeManualEntry(phrase: "卉羚")
+    )
+    #expect(entry.pinyinTokens == ["hui", "ling"])
+    #expect(entry.fullPinyinKey == "huiling")
+    #expect(entry.initialsKey == "hl")
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test

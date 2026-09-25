@@ -645,7 +645,8 @@
 "i18n:MixType.PersonalLexicon.editor.editTitle" = "Edit Personal Phrase";
 "i18n:MixType.PersonalLexicon.editor.addTitle" = "Add Personal Phrase";
 "i18n:MixType.PersonalLexicon.readings" = "Readings (space-separated Zhuyin syllables)";
-"i18n:MixType.PersonalLexicon.invalidReading" = "The current reading cannot produce valid Pinyin.";
+"i18n:MixType.PersonalLexicon.readingsFlexible" = "Reading (Zhuyin or toned Hanyu Pinyin)";
+"i18n:MixType.PersonalLexicon.invalidReading" = "Enter a valid reading, for example ㄏㄨㄟˋ ㄌㄧㄥˊ, hui4 ling2, or huì líng. Pinyin must include tones.";
 "i18n:MixType.PersonalLexicon.pinned" = "Keep permanently / Pin";
 "i18n:MixType.PersonalLexicon.disabled" = "Disable this phrase";
 "i18n:MixType.PersonalLexicon.autoDerive" = "After adding, pronunciation, full Pinyin, and initials are generated locally.";

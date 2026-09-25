@@ -645,7 +645,8 @@
 "i18n:MixType.PersonalLexicon.editor.editTitle" = "編輯個人詞語";
 "i18n:MixType.PersonalLexicon.editor.addTitle" = "新增個人詞語";
 "i18n:MixType.PersonalLexicon.readings" = "讀音（以空格分隔注音音節）";
-"i18n:MixType.PersonalLexicon.invalidReading" = "目前讀音無法產生有效拼音。";
+"i18n:MixType.PersonalLexicon.readingsFlexible" = "讀音（注音，或帶聲調拼音）";
+"i18n:MixType.PersonalLexicon.invalidReading" = "請輸入有效讀音，例如「ㄏㄨㄟˋ ㄌㄧㄥˊ」、「hui4 ling2」或「huì líng」。拼音請包含聲調。";
 "i18n:MixType.PersonalLexicon.pinned" = "永久保留 / Pin";
 "i18n:MixType.PersonalLexicon.disabled" = "停用此詞";
 "i18n:MixType.PersonalLexicon.autoDerive" = "新增後會完全在本機解析讀音並自動產生拼音與簡拼。";

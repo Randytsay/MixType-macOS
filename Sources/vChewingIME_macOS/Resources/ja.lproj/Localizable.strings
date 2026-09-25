@@ -645,7 +645,8 @@
 "i18n:MixType.PersonalLexicon.editor.editTitle" = "個人語句を編集";
 "i18n:MixType.PersonalLexicon.editor.addTitle" = "個人語句を追加";
 "i18n:MixType.PersonalLexicon.readings" = "読み（注音音節を空白区切り）";
-"i18n:MixType.PersonalLexicon.invalidReading" = "現在の読みから有効な Pinyin を生成できません。";
+"i18n:MixType.PersonalLexicon.readingsFlexible" = "読み（注音、または声調付き漢語拼音）";
+"i18n:MixType.PersonalLexicon.invalidReading" = "有効な読みを入力してください（例：ㄏㄨㄟˋ ㄌㄧㄥˊ、hui4 ling2、huì líng）。拼音には声調が必要です。";
 "i18n:MixType.PersonalLexicon.pinned" = "固定して保持 / Pin";
 "i18n:MixType.PersonalLexicon.disabled" = "この語句を無効化";
 "i18n:MixType.PersonalLexicon.autoDerive" = "追加後、読み・Pinyin・略記をすべてローカルで自動生成します。";

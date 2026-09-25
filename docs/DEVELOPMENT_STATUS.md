@@ -67,6 +67,8 @@ and full-Pinyin matches.
 - promotion uses the candidate's actual selected reading and promotes exactly once: ✅
 - conservative English-intent preference: suppress factory-abbreviation-only collisions for English-shaped tokens: ✅
 - English intent keeps stronger Chinese sources (CIN / Personal / full Pinyin) intact: ✅
+- Personal Lexicon manual reading editor accepts canonical Zhuyin or toned Hanyu Pinyin (`hui4 ling2`, `huì líng`) and normalizes to internal Zhuyin: ✅
+- single-character Personal Lexicon reading derivation now prefers the production reverse-lookup index; production regression locks `卉羚 → huiling / hl`: ✅
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -267,6 +269,15 @@ candidates while preserving intended shorthand such as `tdny`, `ysxb`, `jngsfa`,
 Enter / Shift+Space English overrides. Full LibVanguard tests pass, SettingsUI tests are 17/17 PASS,
 LXMgrTests are 23/23 PASS, all four localization files lint, and `make debug` passes.
 
+Follow-up Personal Lexicon hardening fixes a real name-entry failure reported from the Settings UI:
+`卉羚` had been auto-derived as `benling / bl`. Single-scalar reading resolution now uses the existing
+factory reverse-lookup index before the multi-value exact-scan path, while multi-character segmentation
+remains unchanged. The editor no longer exposes Zhuyin as a user requirement: users may enter canonical
+Zhuyin, numbered Hanyu Pinyin (`hui4 ling2`), or tone-marked Hanyu Pinyin (`huì líng`); the data model
+still stores normalized Zhuyin internally for Homa/LXAssembly compatibility. A production-resource test
+asserts `卉羚 → ㄏㄨㄟˋ ㄌㄧㄥˊ → huiling → hl`. Full LibVanguard tests, SettingsUI tests, LXMgrTests
+(24/24), four localization lints, and `make debug` all pass after this fix.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
@@ -275,7 +286,7 @@ Update this section whenever a work batch is handed to another agent/environment
 Current branch: feat/personal-lexicon-v02
 Latest commit: 9a35c0e9 plus Batch B working tree (commit pending)
 Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering
-Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 23/23 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 24/24 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
 Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS on the previous installed build; Batch A Settings/provider UI E2E pending installation
 Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching, Batch A Settings UI, Auto Promotion, and conservative English intent still need real-Mac E2E

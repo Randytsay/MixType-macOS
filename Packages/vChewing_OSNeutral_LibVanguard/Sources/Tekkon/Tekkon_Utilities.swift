@@ -86,6 +86,45 @@ extension Tekkon {
     return targetConverted
   }
 
+  /// 將教科書式漢語拼音聲調符號轉回數字標調式。
+  /// 例如：`huì líng` -> `hui4 ling2`。
+  public static func cnvHanyuPinyinTextbookStyleToNumeric(targetJoined: String) -> String {
+    let toneMap: [Character: (base: Character, tone: Character)] = [
+      "ā": ("a", "1"), "á": ("a", "2"), "ǎ": ("a", "3"), "à": ("a", "4"),
+      "ē": ("e", "1"), "é": ("e", "2"), "ě": ("e", "3"), "è": ("e", "4"),
+      "ī": ("i", "1"), "í": ("i", "2"), "ǐ": ("i", "3"), "ì": ("i", "4"),
+      "ō": ("o", "1"), "ó": ("o", "2"), "ǒ": ("o", "3"), "ò": ("o", "4"),
+      "ū": ("u", "1"), "ú": ("u", "2"), "ǔ": ("u", "3"), "ù": ("u", "4"),
+      "ǖ": ("v", "1"), "ǘ": ("v", "2"), "ǚ": ("v", "3"), "ǜ": ("v", "4"),
+    ]
+
+    var result = ""
+    var syllable = ""
+    var tone: Character?
+
+    func flushSyllable() {
+      guard !syllable.isEmpty else { return }
+      result += syllable
+      if let tone { result.append(tone) }
+      syllable.removeAll(keepingCapacity: true)
+      tone = nil
+    }
+
+    for char in targetJoined.lowercased() {
+      if char == " " || char == "\t" || char == "-" {
+        flushSyllable()
+        result.append(char)
+      } else if let mapped = toneMap[char] {
+        syllable.append(mapped.base)
+        tone = mapped.tone
+      } else {
+        syllable.append(char)
+      }
+    }
+    flushSyllable()
+    return result
+  }
+
   /// 該函式負責將注音轉為教科書印刷的方式（先寫輕聲）。
   /// - Parameters:
   ///   - target: 要拿來做轉換處理的讀音。
