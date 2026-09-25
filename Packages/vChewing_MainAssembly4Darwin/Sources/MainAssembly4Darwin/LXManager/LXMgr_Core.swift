@@ -219,6 +219,19 @@ public final class LXMgr {
     }
   }
 
+  /// Runtime safety net: if a live session's mode currently has no Personal Lexicon entries
+  /// but its persisted JSON exists, reload that mode before Hybrid candidate generation.
+  ///
+  /// Normal startup still loads Personal Lexicon through `initUserLexicons()`. This helper only
+  /// covers lifecycle/cache gaps observed after IME replacement/re-activation and does not touch
+  /// an already-populated in-memory store.
+  public static func ensurePersonalLexiconLoaded(mode: Shared.InputMode) {
+    guard mode != .imeModeNULL, mode.lexicon.personalLexiconEntries.isEmpty else { return }
+    let url = personalLexiconDataURL(mode: mode)
+    guard FileManager.default.isReadableFile(atPath: url.path) else { return }
+    loadPersonalLexiconData(mode: mode)
+  }
+
   /// 以 atomic replace 寫回 Personal Lexicon；呼叫端可選擇處理 IO 錯誤。
   public static func savePersonalLexiconData(mode: Shared.InputMode) throws {
     guard mode != .imeModeNULL else { return }

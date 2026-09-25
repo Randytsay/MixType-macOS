@@ -51,6 +51,23 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
       return true
     }
 
+    // Hybrid 明確英文 override：
+    // - Enter：原樣提交目前 raw token，不選中文候選。
+    // - Shift+Space：原樣提交目前 raw token，並補一個半形空格。
+    // 只在 raw token 非空時攔截；空狀態仍保留既有 Enter / Shift+Space 全域行為。
+    if !handler.calligrapher.isEmpty, input.isEnter {
+      let textToCommit = handler.committableDisplayText(sansReading: true) + handler.calligrapher
+      session.switchState(State.ofCommitting(textToCommit: textToCommit))
+      return true
+    }
+    if !handler.calligrapher.isEmpty, input.isSpace, input.isShiftHeld {
+      let textToCommit = handler.committableDisplayText(sansReading: true)
+        + handler.calligrapher
+        + " "
+      session.switchState(State.ofCommitting(textToCommit: textToCommit))
+      return true
+    }
+
     // Hybrid 的 inline candidate pane 直接以目前畫面 selectionKeys 接受主鍵盤數字。
     // 不沿用 Cassette/Furious 的 Shift 判斷，確保 UI 標示「5」時 plain 5 就選該候選。
     if session.state.isCandidateContainer,
@@ -73,14 +90,14 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
       return true
     }
 
-    if (input.isSpace || input.isEnter), !handler.calligrapher.isEmpty {
+    if input.isSpace, !handler.calligrapher.isEmpty {
       guard !session.state.candidates.isEmpty else {
         // V0.2 ASCII fallback：完整 raw buffer 沒有任何中文候選時，不再蜂鳴或卡住。
-        // 直接提交既有中文組字 + 原始 ASCII；Space 另外保留半形空格，Enter 僅完成提交。
+        // 直接提交既有中文組字 + 原始 ASCII，並保留半形空格。
         // 這是最保守的中英混打退路：只有「零候選」才會觸發，不會搶走任何可用中文候選。
         let textToCommit = handler.committableDisplayText(sansReading: true)
           + handler.calligrapher
-          + (input.isSpace ? " " : "")
+          + " "
         session.switchState(State.ofCommitting(textToCommit: textToCommit))
         return true
       }

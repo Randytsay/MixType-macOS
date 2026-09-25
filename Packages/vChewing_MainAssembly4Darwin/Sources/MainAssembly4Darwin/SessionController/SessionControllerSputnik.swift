@@ -112,6 +112,7 @@ extension SessionControllerSputnik {
     IMKInputSessionController.configureActivatingServer { ctlAddr in
       guard let session = SessionControllerSputnik.session(forAddr: ctlAddr) else { return }
       session.inputControllerAssignedAddr = ctlAddr
+      LXMgr.ensurePersonalLexiconLoaded(mode: session.inputMode)
       session.performServerActivation()
     }
     /// 停用輸入法時，IMK 呼叫此方法。對應 `-[IMKInputController deactivateServer:]`。

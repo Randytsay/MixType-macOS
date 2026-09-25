@@ -857,4 +857,56 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.calligrapher.isEmpty)
     #expect(testHandler.assembler.isEmpty)
   }
+
+  @Test(arguments: [
+    (trigger: "enter", expectTrailingSpace: false),
+    (trigger: "shiftSpace", expectTrailingSpace: true),
+  ])
+  func test_IH109_HybridExplicitEnglishOverrideBeatsChineseCandidate(
+    scenario: (trigger: String, expectTrailingSpace: Bool)
+  ) throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    // `nengliu` has a valid Chinese candidate in the test factory lexicon.
+    // Enter / Shift+Space must nevertheless preserve the literal raw token when the user explicitly asks for English.
+    typeSentence("nengliu")
+    #expect(!testSession.state.candidates.isEmpty)
+    #expect(testHandler.calligrapher == "nengliu")
+
+    let event: KBEvent
+    switch scenario.trigger {
+    case "shiftSpace":
+      event = KBEvent.KeyEventData(flags: .shift, chars: " ", charsSansModifiers: " ", keyCode: 49).asEvent
+    default:
+      event = KBEvent.KeyEventData.dataEnterReturn.asEvent
+    }
+    #expect(testHandler.triageInput(event: event))
+    #expect(testSession.recentCommissions.joined() == (scenario.expectTrailingSpace ? "nengliu " : "nengliu"))
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.isEmpty)
+  }
 }

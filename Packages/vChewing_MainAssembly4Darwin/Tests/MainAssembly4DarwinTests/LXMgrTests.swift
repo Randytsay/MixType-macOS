@@ -391,6 +391,70 @@ final class LXMgrTests {
     #expect(mode.lexicon.lxQuerier.personalLexiconMatches(for: "taidanengyuan").first?.entry.phrase == "台達能源")
   }
 
+  @Test
+  func test027_LXMgr_InitUserLexiconsReloadsPersonalLexiconFromDisk() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let url = LXMgr.personalLexiconDataURL(mode: mode)
+    let fixedDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let entry = LXAssembly.PersonalLexiconEntry(
+      phrase: "台達能源",
+      readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["tai", "da", "neng", "yuan"],
+      fullPinyinKey: "taidanengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      createdAt: fixedDate,
+      updatedAt: fixedDate,
+      pinned: true
+    )
+    defer {
+      mode.lexicon.replacePersonalLexiconEntries([])
+      try? FileManager.default.removeItem(at: url)
+    }
+
+    mode.lexicon.replacePersonalLexiconEntries([entry])
+    try LXMgr.savePersonalLexiconData(mode: mode)
+    mode.lexicon.replacePersonalLexiconEntries([])
+    #expect(mode.lexicon.personalLexiconEntries.isEmpty)
+
+    LXMgr.initUserLexicons()
+
+    #expect(mode.lexicon.personalLexiconEntries == [entry])
+    #expect(mode.lexicon.lxQuerier.personalLexiconMatches(for: "tdny").first?.entry.phrase == "台達能源")
+  }
+
+  @Test
+  func test028_LXMgr_EnsurePersonalLexiconLoadedRepairsEmptyRuntimeStore() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let url = LXMgr.personalLexiconDataURL(mode: mode)
+    let fixedDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let entry = LXAssembly.PersonalLexiconEntry(
+      phrase: "台達能源",
+      readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["tai", "da", "neng", "yuan"],
+      fullPinyinKey: "taidanengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      createdAt: fixedDate,
+      updatedAt: fixedDate,
+      pinned: true
+    )
+    defer {
+      mode.lexicon.replacePersonalLexiconEntries([])
+      try? FileManager.default.removeItem(at: url)
+    }
+
+    mode.lexicon.replacePersonalLexiconEntries([entry])
+    try LXMgr.savePersonalLexiconData(mode: mode)
+    mode.lexicon.replacePersonalLexiconEntries([])
+    #expect(mode.lexicon.personalLexiconEntries.isEmpty)
+
+    LXMgr.ensurePersonalLexiconLoaded(mode: mode)
+
+    #expect(mode.lexicon.personalLexiconEntries == [entry])
+    #expect(mode.lexicon.lxQuerier.personalLexiconMatches(for: "tdny").first?.entry.phrase == "台達能源")
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test
