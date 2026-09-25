@@ -168,9 +168,10 @@ extension LXAssembly {
       /// factory phonetic lexicon。Hybrid 的 Homa 組字器需要同時看到兩者，因此在
       /// 不改寫全域 Cassette 設定的前提下合併 factory phonetic 與既有查詢結果。
       public func hybridPhoneticGrams(for keyArray: [Homa.PossibleKey]) -> [Homa.Gram] {
+        let personal = lxFacade.lxPersonalLexicon.grams(for: keyArray)
         let factory = hybridPhoneticFactoryGrams(for: keyArray)
         let existing = grams(for: keyArray)
-        return (factory + existing).sorted { lhs, rhs in
+        return (personal + factory + existing).sorted { lhs, rhs in
           if lhs.probability != rhs.probability { return lhs.probability > rhs.probability }
           return lhs.current < rhs.current
         }
@@ -180,6 +181,7 @@ extension LXAssembly {
       /// Hybrid 需要在 Cassette=ON 時仍承認 factory phonetic readings 存在。
       public func hybridPhoneticHasGrams(for keyArray: [String]) -> Bool {
         guard !keyArray.isEmpty, keyArray.allSatisfy({ !$0.isEmpty }) else { return false }
+        if lxFacade.lxPersonalLexicon.hasGrams(for: keyArray) { return true }
         if lxFacade.hasUnigramsForFast(keyArray: keyArray) { return true }
         return lxFacade.hasFactoryCoreUnigramsFor(keyArray: keyArray)
       }
@@ -255,6 +257,10 @@ extension LXAssembly {
         lxFacade.countKeyValuePairs(keyArray: keyArray, factoryDictionaryOnly: factoryDictionaryOnly)
       }
 
+      public func personalLexiconMatches(for rawKey: String) -> [PersonalLexiconMatch] {
+        lxFacade.lxPersonalLexicon.matches(for: rawKey)
+      }
+
       // MARK: Fileprivate
 
       fileprivate let lxFacade: LXFacade
@@ -277,6 +283,30 @@ extension LXAssembly {
     public var lxQuerier: LXQuerier { .init(lxFacade: self) }
 
     public var isCassetteDataLoaded: Bool { Self.lxCassette.isLoaded }
+
+    public var personalLexiconEntries: [PersonalLexiconEntry] { lxPersonalLexicon.entries }
+
+    public func replacePersonalLexiconEntries(_ entries: [PersonalLexiconEntry]) {
+      lxPersonalLexicon.replaceEntries(entries)
+    }
+
+    @discardableResult
+    public func upsertPersonalLexiconEntry(_ entry: PersonalLexiconEntry) -> Bool {
+      lxPersonalLexicon.upsert(entry)
+    }
+
+    @discardableResult
+    public func removePersonalLexiconEntry(id: UUID) -> Bool {
+      lxPersonalLexicon.remove(id: id)
+    }
+
+    public func loadPersonalLexiconData(_ data: Data) throws {
+      try lxPersonalLexicon.load(data: data)
+    }
+
+    public func exportPersonalLexiconData() throws -> Data {
+      try lxPersonalLexicon.encode()
+    }
 
     public static func setCassetCandidateKeyValidator(_ validator: @Sendable @escaping (String) -> Bool) {
       Self.lxCassette.candidateKeysValidator = validator
@@ -712,6 +742,7 @@ extension LXAssembly {
     )
     var lxReplacements = LXReplacements()
     var lxAssociates = LXAssociates()
+    var lxPersonalLexicon = PersonalLexiconStore()
 
     /// 額外掛載的語言模組來源中樞（多來源掛載）。
     /// 預設為空，故對既有行為零影響；宿主可經由 `mountGramSupplier(_:)` 追加來源。

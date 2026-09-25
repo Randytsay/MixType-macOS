@@ -10,8 +10,10 @@
 struct HybridCandidateOffer {
   enum Source: Equatable {
     case cassetteExact
+    case personalFullPinyin
     case cassetteQuick
     case pinyinFull
+    case personalInitials
     case pinyinAbbreviation
   }
 
@@ -28,7 +30,8 @@ enum HybridCandidateSelectionOutcome {
 extension InputHandlerProtocol {
   /// 以 Hybrid raw-key buffer 唯讀生成候選。
   ///
-  /// 排序固定為 CIN exact → CIN quick → full Pinyin → abbreviated Pinyin；
+  /// 排序固定為 CIN exact → Personal full Pinyin → CIN quick → full Pinyin
+  /// → Personal initials → abbreviated Pinyin；
   /// 相同輸出值只保留第一次出現者，因此 CIN 命中不會被拼音重新排序到後方。
   func hybridCandidateOffers(for rawKeys: String) -> [HybridCandidateOffer] {
     guard !rawKeys.isEmpty else { return [] }
@@ -43,6 +46,16 @@ extension InputHandlerProtocol {
       )
     }
     groupedOffers.append(cassetteExact)
+
+    let personalMatches = currentLM.lxQuerier.personalLexiconMatches(for: rawKeys)
+    groupedOffers.append(personalMatches.compactMap { match in
+      guard match.kind == .fullPinyin else { return nil }
+      return HybridCandidateOffer(
+        candidate: (keyArray: match.entry.readings, value: match.entry.phrase),
+        source: .personalFullPinyin,
+        score: match.score
+      )
+    })
 
     let cassetteQuick: [HybridCandidateOffer]
     if let rawQuick = currentLM.lxQuerier.cassetteQuickSets(
@@ -62,6 +75,14 @@ extension InputHandlerProtocol {
     groupedOffers.append(cassetteQuick)
 
     groupedOffers.append(hybridFullPinyinOffers(for: rawKeys))
+    groupedOffers.append(personalMatches.compactMap { match in
+      guard match.kind == .initials else { return nil }
+      return HybridCandidateOffer(
+        candidate: (keyArray: match.entry.readings, value: match.entry.phrase),
+        source: .personalInitials,
+        score: match.score
+      )
+    })
     groupedOffers.append(hybridAbbreviatedPinyinOffers(for: rawKeys))
 
     var seenValues = Set<String>()
@@ -129,7 +150,7 @@ extension InputHandlerProtocol {
         return nil
       }
       return .commit(committableDisplayText(sansReading: true) + canonicalCandidate.value)
-    case .pinyinFull, .pinyinAbbreviation:
+    case .personalFullPinyin, .pinyinFull, .personalInitials, .pinyinAbbreviation:
       guard confirmHybridPinyinCandidate(canonicalCandidate) else { return nil }
       return .composition
     }

@@ -75,6 +75,31 @@ extension VanguardTrie {
       return readings.isEmpty ? nil : readings
     }
 
+    /// 低頻管理操作專用：一次掃描 TextMap，為指定顯示值找出精確 reading chains。
+    ///
+    /// 一般 `reverseLookup(for:)` 為單一 Unicode scalar 最佳化，無法處理「台達」等多字詞。
+    /// Personal Lexicon 新增／編輯屬低頻操作，適合以一次線性掃描換取精確整詞／詞段讀音，
+    /// 而不建立常駐的巨大 value→reading 索引。此 API 不應放在逐鍵輸入熱路徑。
+    public func exactReadingChains(for values: Set<String>) -> [String: [[String]]] {
+      guard !values.isEmpty else { return [:] }
+      var result: [String: [[String]]] = [:]
+      var seen: [String: Set<[String]>] = [:]
+
+      for index in keyEntries.indices {
+        let entries = parsedEntries(for: index)
+        guard !entries.isEmpty else { continue }
+        let matchedValues = Set(entries.lazy.map(\.value).filter(values.contains))
+        guard !matchedValues.isEmpty else { continue }
+        let readings = resolveKeyArray(for: keyEntries[index])
+        guard !readings.isEmpty else { continue }
+        for value in matchedValues {
+          guard seen[value, default: []].insert(readings).inserted else { continue }
+          result[value, default: []].append(readings)
+        }
+      }
+      return result
+    }
+
     /// 清除所有 QueryBuffer 快取（node、nodeIDs、nodes、entryGroups）。
     /// 應在適當的時機呼叫，避免舊查詢結果污染新的查詢。
     public func flushCaches() {

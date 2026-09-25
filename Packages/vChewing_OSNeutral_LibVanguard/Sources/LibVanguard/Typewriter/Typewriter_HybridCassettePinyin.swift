@@ -63,7 +63,13 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
 
     if (input.isSpace || input.isEnter), !handler.calligrapher.isEmpty {
       guard !session.state.candidates.isEmpty else {
-        handler.errorCallback?("Hybrid: no candidate for \(handler.calligrapher).")
+        // V0.2 ASCII fallback：完整 raw buffer 沒有任何中文候選時，不再蜂鳴或卡住。
+        // 直接提交既有中文組字 + 原始 ASCII；Space 另外保留半形空格，Enter 僅完成提交。
+        // 這是最保守的中英混打退路：只有「零候選」才會觸發，不會搶走任何可用中文候選。
+        let textToCommit = handler.committableDisplayText(sansReading: true)
+          + handler.calligrapher
+          + (input.isSpace ? " " : "")
+        session.switchState(State.ofCommitting(textToCommit: textToCommit))
         return true
       }
       let highlightedIndex = session.candidateController()?.highlightedIndex ?? 0

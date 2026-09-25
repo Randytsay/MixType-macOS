@@ -26,6 +26,20 @@ public final class LXMgr {
     public let infoText: String
   }
 
+  public enum PersonalLexiconManagementError: Error, LocalizedError {
+    case unresolvedReading(String)
+    case invalidEntry(String)
+
+    public var errorDescription: String? {
+      switch self {
+      case let .unresolvedReading(phrase):
+        return "Unable to resolve a local pronunciation for: \(phrase)"
+      case let .invalidEntry(phrase):
+        return "Unable to create a valid Personal Lexicon entry for: \(phrase)"
+      }
+    }
+  }
+
   public static var shared = LXMgr()
 
   /// Accumulates path-invalidity alerts when ``UserDefaults/pendingUnitTests`` is true.
@@ -70,6 +84,7 @@ public final class LXMgr {
     // 如果發現自訂目錄不可用，則會自動抹去自訂目錄設定、改採預設目錄。
     // 所以這裡不需要特別處理。
     Self.loadUserPhrasesData()
+    Self.loadPersonalLexiconData()
     // 就關聯詞語登記惰性載入器，會趁首次需要完成載入。
     LXAssembly.LXFacade.associatesLazyLoader = {
       if PrefMgr.shared.associatedPhrasesEnabled {
@@ -183,6 +198,69 @@ public final class LXMgr {
         )
       }
     }
+  }
+
+  /// 載入 MixType Personal Lexicon。格式錯誤／future schema 時 fail closed：
+  /// 保留目前記憶體內容，不改寫來源檔案。
+  public static func loadPersonalLexiconData(mode: Shared.InputMode? = nil) {
+    let targetModes = mode.map { [$0] } ?? Shared.InputMode.validCases
+    for targetMode in targetModes where targetMode != .imeModeNULL {
+      let url = personalLexiconDataURL(mode: targetMode)
+      guard FileManager.default.isReadableFile(atPath: url.path) else {
+        targetMode.lexicon.replacePersonalLexiconEntries([])
+        continue
+      }
+      do {
+        let data = try Data(contentsOf: url)
+        try targetMode.lexicon.loadPersonalLexiconData(data)
+      } catch {
+        vCLog("Personal Lexicon load failed at \(url.path): \(error.localizedDescription)")
+      }
+    }
+  }
+
+  /// 以 atomic replace 寫回 Personal Lexicon；呼叫端可選擇處理 IO 錯誤。
+  public static func savePersonalLexiconData(mode: Shared.InputMode) throws {
+    guard mode != .imeModeNULL else { return }
+    let url = personalLexiconDataURL(mode: mode)
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(),
+      withIntermediateDirectories: true
+    )
+    let data = try mode.lexicon.exportPersonalLexiconData()
+    try data.write(to: url, options: [.atomic])
+  }
+
+  /// 手動新增中文詞的主入口。讀音、全拼與首字母全部由本機 factory dictionary + Tekkon 推導。
+  @discardableResult
+  public static func addPersonalLexiconPhrase(
+    _ phrase: String,
+    mode: Shared.InputMode,
+    pinned: Bool = true
+  ) throws -> LXAssembly.PersonalLexiconEntry {
+    let trimmed = phrase.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else {
+      throw PersonalLexiconManagementError.invalidEntry(phrase)
+    }
+    guard let entry = LXAssembly.PersonalLexiconReadingResolver.makeManualEntry(
+      phrase: trimmed,
+      pinned: pinned
+    ) else {
+      throw PersonalLexiconManagementError.unresolvedReading(trimmed)
+    }
+    let previousEntries = mode.lexicon.personalLexiconEntries
+    guard mode.lexicon.upsertPersonalLexiconEntry(entry) else {
+      throw PersonalLexiconManagementError.invalidEntry(trimmed)
+    }
+    do {
+      try savePersonalLexiconData(mode: mode)
+    } catch {
+      // 寫檔失敗時完整 rollback，避免覆寫既有同 phrase+reading entry 後又只刪掉新版，
+      // 導致原資料在記憶體中遺失。
+      mode.lexicon.replacePersonalLexiconEntries(previousEntries)
+      throw error
+    }
+    return entry
   }
 
   public static func loadUserAssociatesData() {

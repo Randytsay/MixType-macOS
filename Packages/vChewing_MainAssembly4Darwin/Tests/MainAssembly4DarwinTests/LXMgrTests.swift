@@ -304,6 +304,93 @@ final class LXMgrTests {
     #expect(defaults.string(forKey: UserDef.kUserDataFolderSpecified.rawValue) == "")
   }
 
+  @Test
+  func test024_LXMgr_PersonalLexiconPathUsesUnitTestSandbox() {
+    let url = LXMgr.personalLexiconDataURL(mode: .imeModeCHT)
+    #expect(url.deletingLastPathComponent().path == LXMgr.unitTestDataURL(isDefaultFolder: false).path)
+    #expect(url.lastPathComponent == "personal-lexicon-cht.json")
+
+    let chsURL = LXMgr.personalLexiconDataURL(mode: .imeModeCHS)
+    #expect(chsURL.lastPathComponent == "personal-lexicon-chs.json")
+  }
+
+  @Test
+  func test025_LXMgr_PersonalLexiconAtomicSaveAndReload() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let url = LXMgr.personalLexiconDataURL(mode: mode)
+    let fixedDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let entry = LXAssembly.PersonalLexiconEntry(
+      phrase: "台達能源",
+      readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["tai", "da", "neng", "yuan"],
+      fullPinyinKey: "taidanengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      createdAt: fixedDate,
+      updatedAt: fixedDate,
+      pinned: true
+    )
+    defer {
+      mode.lexicon.replacePersonalLexiconEntries([])
+      try? FileManager.default.removeItem(at: url)
+    }
+
+    mode.lexicon.replacePersonalLexiconEntries([entry])
+    try LXMgr.savePersonalLexiconData(mode: mode)
+    #expect(FileManager.default.isReadableFile(atPath: url.path))
+
+    mode.lexicon.replacePersonalLexiconEntries([])
+    #expect(mode.lexicon.personalLexiconEntries.isEmpty)
+    LXMgr.loadPersonalLexiconData(mode: mode)
+
+    #expect(mode.lexicon.personalLexiconEntries == [entry])
+    #expect(mode.lexicon.lxQuerier.personalLexiconMatches(for: "tdny").first?.entry.phrase == "台達能源")
+  }
+
+  @Test
+  func test026_LXMgr_AddPersonalPhraseDerivesKeysAndPersists() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let url = LXMgr.personalLexiconDataURL(mode: mode)
+    let fixture = """
+    #PRAGMA:VANGUARD_HOMA_LEXICON_HEADER
+    VERSION\t1.1
+    TYPE\tTYPING
+    READING_SEPARATOR\t-
+    ENTRY_COUNT\t4
+    KEY_COUNT\t4
+    #PRAGMA:VANGUARD_HOMA_LEXICON_VALUES
+    台達\t-1\t5
+    能源\t-1\t5
+    台\t-1\t5
+    達\t-1\t5
+    #PRAGMA:VANGUARD_HOMA_LEXICON_KEY_LINE_MAP
+    ㄊㄞˊ-ㄉㄚˊ\t0\t1
+    ㄋㄥˊ-ㄩㄢˊ\t1\t1
+    ㄊㄞˊ\t2\t1
+    ㄉㄚˊ\t3\t1
+    """
+    defer {
+      mode.lexicon.replacePersonalLexiconEntries([])
+      LXAssembly.LXFacade.disconnectFactoryDictionary()
+      try? FileManager.default.removeItem(at: url)
+    }
+    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: fixture))
+
+    let entry = try LXMgr.addPersonalLexiconPhrase("  台達能源  ", mode: mode)
+
+    #expect(entry.phrase == "台達能源")
+    #expect(entry.readings == ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"])
+    #expect(entry.fullPinyinKey == "taidanengyuan")
+    #expect(entry.initialsKey == "tdny")
+    #expect(entry.pinned)
+    #expect(mode.lexicon.lxQuerier.personalLexiconMatches(for: "tdny").first?.entry.phrase == "台達能源")
+    #expect(FileManager.default.isReadableFile(atPath: url.path))
+
+    mode.lexicon.replacePersonalLexiconEntries([])
+    LXMgr.loadPersonalLexiconData(mode: mode)
+    #expect(mode.lexicon.lxQuerier.personalLexiconMatches(for: "taidanengyuan").first?.entry.phrase == "台達能源")
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test

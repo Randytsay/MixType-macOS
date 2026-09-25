@@ -136,6 +136,14 @@ extension LXAssembly.LXFacade {
     return readings
   }
 
+  /// Personal Lexicon 等低頻管理操作使用的多值精確反查。
+  /// 只做一次 factory TextMap 線性掃描，不進逐鍵輸入熱路徑。
+  public static func getFactoryExactReadingChains(
+    for values: Set<String>
+  ) -> [String: [[String]]] {
+    factoryTrie?.exactReadingChains(for: values) ?? [:]
+  }
+
   func getHaninSymbolMenuUnigrams() -> [Homa.Gram] {
     guard let trie = Self.factoryTrie else { return [] }
     let nodes = trie.getNodes(

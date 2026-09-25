@@ -605,4 +605,179 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       #expect(testHandler.calligrapher == expected)
     }
   }
+
+  @Test
+  func test_IH103_HybridNoCandidateSpaceFallsBackToASCIIWithoutError() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("taidanengyuan")
+    #expect(testHandler.calligrapher == "taidanengyuan")
+    #expect(testSession.state.candidates.isEmpty)
+
+    let handled = testHandler.triageInput(event: KBEvent.KeyEventData(chars: " ").asEvent)
+    #expect(handled)
+    #expect(testSession.recentCommissions.joined() == "taidanengyuan ")
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testSession.state.type == .ofEmpty)
+  }
+
+  @Test
+  func test_IH104_HybridKnownPinyinSpaceStillSelectsChineseCandidate() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("nengliu")
+    #expect(testSession.state.candidates.contains { $0.value == "能留" })
+    let targetIndex = try #require(testSession.state.candidates.firstIndex { $0.value == "能留" })
+    testSession.installMockCandidateController(visible: true, capacityPerPage: 9).highlightedIndex = targetIndex
+
+    let handled = testHandler.triageInput(event: KBEvent.KeyEventData(chars: " ").asEvent)
+    #expect(handled)
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["能留"])
+  }
+
+  @Test(arguments: ["taidanengyuan", "tdny"])
+  func test_IH105_HybridPersonalLexiconFullAndInitialsSelectIntoHoma(rawKey: String) throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.currentLM.replacePersonalLexiconEntries([])
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    testHandler.currentLM.replacePersonalLexiconEntries([
+      .init(
+        phrase: "台達能源",
+        readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+        pinyinTokens: ["tai", "da", "neng", "yuan"],
+        fullPinyinKey: "taidanengyuan",
+        initialsKey: "tdny",
+        source: .manual,
+        pinned: true
+      ),
+    ])
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence(rawKey)
+    let candidateIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "台達能源" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: candidateIndex)
+
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.actualKeys == ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"])
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["台達能源"])
+  }
+
+  @Test
+  func test_IH106_HybridNoCandidateFallbackCommitsPriorChinesePlusASCII() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("nengliu")
+    let chineseIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "能留" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: chineseIndex)
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["能留"])
+
+    typeSentence("taidanengyuan")
+    #expect(testHandler.calligrapher == "taidanengyuan")
+    #expect(testSession.state.candidates.isEmpty)
+
+    let handled = testHandler.triageInput(event: KBEvent.KeyEventData(chars: " ").asEvent)
+    #expect(handled)
+    #expect(testSession.recentCommissions.joined() == "能留taidanengyuan ")
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.isEmpty)
+  }
 }

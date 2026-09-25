@@ -86,6 +86,19 @@ extension LXMgr {
       .appendingPathComponent(fileName)
   }
 
+  /// MixType Personal Lexicon 的版本化 JSON 路徑。
+  ///
+  /// 與現有使用者片語資料同屬使用者可搬移的資料目錄；繁／簡模式各自獨立，避免詞形混用。
+  public static func personalLexiconDataURL(
+    mode: Shared.InputMode,
+    basePath: String? = nil
+  ) -> URL {
+    let suffix = mode == .imeModeCHT ? "cht" : "chs"
+    let folderPath = basePath ?? dataFolderPath(isDefaultFolder: false)
+    return URL(fileURLWithPath: folderPath)
+      .appendingPathComponent("personal-lexicon-\(suffix).json")
+  }
+
   /// 使用者漸退記憶模組資料的存取頻次特別高，且資料新陳代謝速度快，所以只適合放在預設的使用者資料目錄下。
   /// 也就是「~/Library/Application Support/vChewing/」目錄下，且不會隨著使用者片語辭典目錄的改變而改變。
   /// - Parameter mode: 簡繁體輸入模式。

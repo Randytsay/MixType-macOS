@@ -134,6 +134,7 @@ let package = Package(
         "TrieKit"
         "Homa"
         "Shared"
+        "Tekkon"
         Target.Dependency.product(
           name: "VanguardSwiftExtension", package: "VanguardSwiftExtension"
         )
