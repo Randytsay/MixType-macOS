@@ -1,3 +1,39 @@
+# MixType for macOS
+
+> **A hybrid macOS input method combining Boshiamy CIN, Pinyin, abbreviation input, adaptive learning, and seamless Chinese-English typing.**
+
+**MixType** 是基於 [vChewing](https://github.com/vChewing/vChewing-macOS) 的 macOS 輸入法實驗性分支，目標是在同一個輸入模式中融合 **嘸蝦米／CIN、拼音、簡拼、個人化學習與中英文混合輸入**，減少在不同輸入模式之間反覆切換的負擔。
+
+## 專案目標
+
+MixType 預計朝以下方向發展：
+
+- **嘸蝦米／CIN 優先**：保留既有字根輸入的肌肉記憶與精確性。
+- **拼音候選融合**：同一串按鍵可同時由 CIN 與拼音引擎解析，並將候選結果整合排序。
+- **全拼與簡拼**：支援完整拼音，以及如 `wbzd → 我不知道`、`cyw → 蔡耀文` 的首字母快速輸入。
+- **個人化學習**：依據實際選字與使用頻率學習個人常用詞、人名、專有名詞與縮寫。
+- **中英文無縫混打**：降低輸入中文、英文縮寫、產品名稱與技術名詞時頻繁切換模式的需要。
+- **本機優先**：核心輸入、候選與學習機制以本機處理為原則，兼顧速度、隱私與離線可用性。
+
+## 目前狀態
+
+> 🚧 **Early Development / 開發初期**
+>
+> 本專案目前剛由 vChewing fork 建立。vChewing 原有功能與架構仍為目前基礎；上面列出的 Hybrid CIN + Pinyin、簡拼學習、候選融合與完整中英混打能力屬於 **MixType 的開發目標**，並非目前所有功能都已完成。
+
+## Upstream 與授權
+
+MixType fork 自 **vChewing macOS**，並保留原專案的授權、著作權聲明與第三方元件授權。後續修改與散布將遵循上游授權條款；本分支使用 **MixType** 名稱，以與上游 vChewing 正式版本清楚區分。
+
+- Upstream: https://github.com/vChewing/vChewing-macOS
+- vChewing project site: https://vchewing.github.io/
+
+---
+
+## 上游 vChewing 原始 README
+
+以下保留 fork 當下的上游 README，供原始功能、建置方式、系統需求與授權資訊參考。
+
 語言：[简体中文](./README-CHS.md) | *繁體中文*
 
 僅以此 README 紀念祁建華 (CHIEN-HUA CHI, 1921-2001)。
