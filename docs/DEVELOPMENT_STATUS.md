@@ -105,7 +105,7 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: chore/mac-baseline-reconciliation
-Latest commit: 9d04b724cb9e64b2a953012f5e54bd6cec3cbb37 (code/docs state reconciled before this status update)
+Latest commit: 6755ccec644ac46ca566aeb71ab4a10675999055 (Mac baseline reconciliation/status update)
 Completed: local clone; origin/upstream reconciliation; host/toolchain audit; local Vanguard product build
 Tests: `make test` blocked before execution by missing FoundationMacros in Command Line Tools; `swift build -c debug --product Vanguard` PASS
 CI: no fork run observed for the docs-only fork commits; upstream shared base 62936e41 has passing Linux, Windows, and macOS workflows
