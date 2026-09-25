@@ -12,7 +12,7 @@ Specification:
 
 ## Current phase
 
-**V0.1 Phase A — Hybrid mode plumbing implemented; validation in progress**
+**V0.1 Phase B — CIN + Pinyin candidate providers and merge**
 
 The clean Mac baseline has passed, including real IME installation and cassette/CIN input.
 Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fusion remains Phase B.
@@ -29,7 +29,7 @@ Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fu
 - real IME installation baseline: ✅; Debug vChewing installs alongside OpenVanilla without overwrite
 - real CIN/Boshiamy cassette baseline: ✅; a local private CIN was loaded and real cassette composition/commit was verified
 - V0.1 feature branch: ✅ (`feat/hybrid-input-v01`)
-- Hybrid Phase A implementation: ✅; dedicated routing seam implemented, candidate fusion intentionally not started in this batch
+- Hybrid Phase A implementation: ✅; dedicated routing seam implemented and validated on the Mac
 - V0.1 Phase A read-only implementation audit: ✅ (`docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md`)
 - V0.2 Personal Lexicon + Auto Promotion specification: ✅ (`docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md`)
 
@@ -61,8 +61,8 @@ Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fu
 
 ## Required next steps
 
-1. Validate the Phase A feature commit in GitHub CI and on the Mac once the CoS Mac tunnel is available again.
-2. Begin Phase B on `feat/hybrid-input-v01`: add non-mutating CIN/full-Pinyin/abbreviated-Pinyin candidate providers and deterministic merge/deduplication.
+1. Begin Phase B on `feat/hybrid-input-v01`: add non-mutating CIN/full-Pinyin/abbreviated-Pinyin candidate providers and deterministic merge/deduplication.
+2. Add focused tests proving CIN exact priority, Pinyin visibility, abbreviation visibility, and deduplication.
 3. Preserve the invariant that one physical key event has one Hybrid coordinator owner; never invoke the cassette and BPMF typewriters sequentially against shared state.
 4. Keep Personal Lexicon, mixed English detection, and Settings UI work out of Phase B.
 
@@ -109,9 +109,9 @@ Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fu
 
 ## Current blockers
 
-The Mac baseline blocker is resolved. The WebCodex VPS does not currently have a Swift executable, so it cannot compile or run LibVanguard tests locally; the attempted focused test command fails at environment lookup with `swift: not found`. GitHub CI and CoS Mac are therefore the authoritative compile/test gates for the Phase A feature commit.
+The Mac baseline blocker is resolved. Phase A commit `125bea1161b9f76d1b4be798adad9e93776c9531` passed the focused Hybrid tests on Xcode 27 / Swift 6.4 (2 tests), the full LibVanguard package test suite, and `make debug` on the Mac. The WebCodex VPS does not currently have a Swift executable, so it cannot compile or run these tests locally.
 
-The CoS Mac connector tunnel is temporarily unavailable after the input-source login/refresh sequence. This does not invalidate the already completed clean-baseline evidence, but feature-branch macOS runtime validation must wait for that connector to reconnect.
+Draft PR #3 exists to provide a review surface. No GitHub Actions run was observed for the feature commit, so Mac validation is the current authoritative compile/test evidence for Phase A.
 
 ## Handoff template
 
@@ -119,11 +119,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/hybrid-input-v01
-Latest commit: pending Phase A commit
-Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A preference/mode/dedicated route/test implementation
-Tests: pre-feature Mac LibVanguard make test PASS; pre-feature make debug PASS; WebCodex feature test attempt blocked because Swift is not installed on the VPS
-CI: pending Phase A push
-Mac runtime validation: clean baseline PASS; Phase A feature commit validation pending CoS Mac reconnect
-Known issues: no Phase B candidate fusion yet, so Hybrid Phase A intentionally behaves as the cassette-compatible routing skeleton
-Next unfinished item: validate Phase A commit, then implement Phase B actual CIN + Pinyin candidate providers and merge
+Latest commit: 125bea1161b9f76d1b4be798adad9e93776c9531
+Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A preference/mode/dedicated route/test implementation and Mac validation
+Tests: Phase A Hybrid filter 2/2 PASS; full LibVanguard package tests PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+CI: Draft PR #3 exists; no GitHub Actions run observed for the feature commit
+Mac runtime validation: clean baseline PASS; Phase A compile/tests/build PASS
+Known issues: no Phase B candidate fusion yet, so the current installed/Phase A behavior still exposes cassette semantics only
+Next unfinished item: implement Phase B actual CIN + full-Pinyin + abbreviated-Pinyin candidate providers and deterministic merge
 ```
