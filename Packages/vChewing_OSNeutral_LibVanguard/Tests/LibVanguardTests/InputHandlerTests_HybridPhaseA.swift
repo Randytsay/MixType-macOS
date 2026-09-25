@@ -1101,7 +1101,7 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.applyMixTypeSingleCharacterPreference(to: candidates).map(\.value) == ["要", "藥", "耀"])
 
     let now = Date(timeIntervalSince1970: 1_700_000_000)
-    for offset in 0 ..< 3 {
+    for offset in 0 ..< 2 {
       #expect(
         testHandler.currentLM.recordSingleCharacterPreference(
           reading: "ㄧㄠˋ",
@@ -1110,6 +1110,15 @@ extension LibVanguardTestsRoot.InputHandlerTests {
         ) != nil
       )
     }
+    #expect(testHandler.applyMixTypeSingleCharacterPreference(to: candidates).map(\.value) == ["要", "藥", "耀"])
+
+    #expect(
+      testHandler.currentLM.recordSingleCharacterPreference(
+        reading: "ㄧㄠˋ",
+        value: "耀",
+        now: now.addingTimeInterval(2)
+      ) != nil
+    )
 
     let reordered = testHandler.applyMixTypeSingleCharacterPreference(to: candidates)
     #expect(reordered.map(\.value) == ["耀", "要", "藥"])

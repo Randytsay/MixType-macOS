@@ -59,6 +59,7 @@ extension LXAssembly {
   /// 真正選中的單一漢字。這層與 Personal Lexicon 分離，避免大量單字污染詞庫。
   public final class SingleCharacterPreferenceStore {
     public static let schemaVersion = 1
+    public static let rankingThreshold = 3
 
     public init(entries: [SingleCharacterPreferenceEntry] = []) {
       replaceEntries(entries)

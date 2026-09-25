@@ -71,6 +71,7 @@ and full-Pinyin matches.
 - single-character Personal Lexicon reading derivation now prefers the production reverse-lookup index; production regression locks `卉羚 → huiling / hl`: ✅
 - toneless Pinyin single-character preference store (`single-character-preferences-cht/chs.json`): ✅
 - explicit single-character Pinyin selections learn by tone-insensitive Zhuyin bucket (for example `ㄧㄠˋ → ㄧㄠ`) and persist across restarts: ✅
+- single-character candidate order starts changing only after 3 explicit selections; the first 1–2 selections are recorded but do not reorder, reducing accidental-learning risk: ✅
 - Hybrid and native Pinyin candidate lists re-rank only single-character peers; longer words keep their original relative positions: ✅
 - regression locks `要 / 藥 / 耀` so repeated explicit selection of `耀` moves it ahead without deleting alternatives: ✅
 
@@ -290,7 +291,8 @@ a one-character Pinyin candidate records a preference keyed by tone-insensitive 
 `ㄧㄠˋ` normalizes to `ㄧㄠ`) plus the selected character. Hybrid and native Pinyin candidate generation
 use this persistent preference only to reorder single-character peers occupying the same candidate slots;
 multi-character phrases retain their original order. Regressions `IH525` / `IH526` verify that repeated
-selection of `耀` moves it ahead of `要 / 藥` and that the learning hook requests persistence. The
+selection of `耀` leaves the original order unchanged for the first two selections, moves it ahead of
+`要 / 藥` starting with the third explicit selection, and that the learning hook requests persistence. The
 dedicated JSON store round-trips successfully, LXMgr save/reload passes, full LibVanguard tests pass,
 SettingsUI remains 17/17 PASS, LXMgrTests are 25/25 PASS, and `make debug` passes.
 

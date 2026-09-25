@@ -83,11 +83,13 @@ extension InputHandlerProtocol {
     let sortedSingles = indexedSingles.sorted { lhs, rhs in
       let lhsPref = mixTypeSingleCharacterPreference(for: lhs.candidate)
       let rhsPref = mixTypeSingleCharacterPreference(for: rhs.candidate)
-      let lhsCount = lhsPref?.selectionCount ?? 0
-      let rhsCount = rhsPref?.selectionCount ?? 0
+      let lhsRawCount = lhsPref?.selectionCount ?? 0
+      let rhsRawCount = rhsPref?.selectionCount ?? 0
+      let lhsCount = lhsRawCount >= LXAssembly.SingleCharacterPreferenceStore.rankingThreshold ? lhsRawCount : 0
+      let rhsCount = rhsRawCount >= LXAssembly.SingleCharacterPreferenceStore.rankingThreshold ? rhsRawCount : 0
       if lhsCount != rhsCount { return lhsCount > rhsCount }
-      let lhsDate = lhsPref?.lastSelectedAt ?? .distantPast
-      let rhsDate = rhsPref?.lastSelectedAt ?? .distantPast
+      let lhsDate = lhsCount > 0 ? (lhsPref?.lastSelectedAt ?? .distantPast) : .distantPast
+      let rhsDate = rhsCount > 0 ? (rhsPref?.lastSelectedAt ?? .distantPast) : .distantPast
       if lhsDate != rhsDate { return lhsDate > rhsDate }
       return lhs.originalIndex < rhs.originalIndex
     }.map(\.candidate)
