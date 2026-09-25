@@ -2,6 +2,8 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `LGPL-3.0-or-later`.
 
+import Foundation
+
 // MARK: - HybridCandidateOffer
 
 /// MixType Hybrid 內部使用的候選來源標記。
@@ -20,6 +22,19 @@ struct HybridCandidateOffer {
   let candidate: CandidateInState
   let source: Source
   let score: Double
+  let personalEntryID: UUID?
+
+  init(
+    candidate: CandidateInState,
+    source: Source,
+    score: Double,
+    personalEntryID: UUID? = nil
+  ) {
+    self.candidate = candidate
+    self.source = source
+    self.score = score
+    self.personalEntryID = personalEntryID
+  }
 }
 
 enum HybridCandidateSelectionOutcome {
@@ -53,7 +68,8 @@ extension InputHandlerProtocol {
       return HybridCandidateOffer(
         candidate: (keyArray: match.entry.readings, value: match.entry.phrase),
         source: .personalFullPinyin,
-        score: match.score
+        score: match.score,
+        personalEntryID: match.entry.id
       )
     })
 
@@ -80,7 +96,8 @@ extension InputHandlerProtocol {
       return HybridCandidateOffer(
         candidate: (keyArray: match.entry.readings, value: match.entry.phrase),
         source: .personalInitials,
-        score: match.score
+        score: match.score,
+        personalEntryID: match.entry.id
       )
     })
     groupedOffers.append(hybridAbbreviatedPinyinOffers(for: rawKeys))
@@ -152,6 +169,10 @@ extension InputHandlerProtocol {
       return .commit(committableDisplayText(sansReading: true) + canonicalCandidate.value)
     case .personalFullPinyin, .pinyinFull, .personalInitials, .pinyinAbbreviation:
       guard confirmHybridPinyinCandidate(canonicalCandidate) else { return nil }
+      if let personalEntryID = offer.personalEntryID,
+         currentLM.recordPersonalLexiconSelection(id: personalEntryID) {
+        SessionHost.shared.savePersonalLexiconData(currentLM.isCHS)
+      }
       return .composition
     }
   }

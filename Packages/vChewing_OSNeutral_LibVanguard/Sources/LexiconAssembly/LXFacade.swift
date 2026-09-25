@@ -300,6 +300,11 @@ extension LXAssembly {
       lxPersonalLexicon.remove(id: id)
     }
 
+    @discardableResult
+    public func recordPersonalLexiconSelection(id: UUID, now: Date = Date()) -> Bool {
+      lxPersonalLexicon.recordSelection(id: id, now: now)
+    }
+
     public func loadPersonalLexiconData(_ data: Data) throws {
       try lxPersonalLexicon.load(data: data)
     }

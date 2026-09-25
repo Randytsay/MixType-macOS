@@ -909,4 +909,58 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.calligrapher.isEmpty)
     #expect(testHandler.assembler.isEmpty)
   }
+
+  @Test
+  func test_IH110_HybridPersonalSelectionLearnsAndRequestsPersistence() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    var saveCount = 0
+    SessionHost.shared.savePersonalLexiconData = { _ in saveCount += 1 }
+    defer {
+      SessionHost.shared.savePersonalLexiconData = { _ in }
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.currentLM.replacePersonalLexiconEntries([])
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    let entry = LXAssembly.PersonalLexiconEntry(
+      phrase: "台達能源",
+      readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["tai", "da", "neng", "yuan"],
+      fullPinyinKey: "taidanengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      pinned: true
+    )
+    testHandler.currentLM.replacePersonalLexiconEntries([entry])
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("tdny")
+    let candidateIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "台達能源" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: candidateIndex)
+
+    let learned = try #require(testHandler.currentLM.personalLexiconEntries.first)
+    #expect(learned.selectionCount == 1)
+    #expect(learned.lastUsedAt != nil)
+    #expect(saveCount == 1)
+  }
 }

@@ -124,4 +124,45 @@ struct PersonalLexiconTests {
     #expect(entry.initialsKey == "tdny")
     #expect(entry.pinned)
   }
+
+  @Test
+  func testPersonalLexiconSelectionLearningReordersSameInitials() throws {
+    let oldDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let newerDate = Date(timeIntervalSince1970: 1_700_100_000)
+    let learnedDate = Date(timeIntervalSince1970: 1_700_200_000)
+
+    let target = LXAssembly.PersonalLexiconEntry(
+      phrase: "台達能源",
+      readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["tai", "da", "neng", "yuan"],
+      fullPinyinKey: "taidanengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      selectionCount: 0,
+      createdAt: oldDate,
+      updatedAt: oldDate,
+      pinned: true
+    )
+    let peer = LXAssembly.PersonalLexiconEntry(
+      phrase: "替代能源",
+      readings: ["ㄊㄧˋ", "ㄉㄞˋ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["ti", "dai", "neng", "yuan"],
+      fullPinyinKey: "tidainengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      selectionCount: 0,
+      createdAt: newerDate,
+      updatedAt: newerDate,
+      pinned: true
+    )
+    let store = LXAssembly.PersonalLexiconStore(entries: [target, peer])
+
+    #expect(store.matches(for: "tdny").first?.entry.phrase == "替代能源")
+    #expect(store.recordSelection(id: target.id, now: learnedDate))
+
+    let reordered = store.matches(for: "tdny")
+    #expect(reordered.map(\.entry.phrase) == ["台達能源", "替代能源"])
+    #expect(reordered.first?.entry.selectionCount == 1)
+    #expect(reordered.first?.entry.lastUsedAt == learnedDate)
+  }
 }

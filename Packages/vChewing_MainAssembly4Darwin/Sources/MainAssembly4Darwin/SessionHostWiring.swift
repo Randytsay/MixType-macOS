@@ -23,6 +23,14 @@ extension SessionHost {
     host.flushTrieCaches = { LXMgr.flushTrieCaches() }
     host.isStateDataFilterableForMarked = { LXMgr.isStateDataFilterableForMarked($0) }
     host.savePerceptionOverrideModelData = { LXMgr.savePerceptionOverrideModelData(false) }
+    host.savePersonalLexiconData = { isCHS in
+      let mode: Shared.InputMode = isCHS ? .imeModeCHS : .imeModeCHT
+      do {
+        try LXMgr.savePersonalLexiconData(mode: mode)
+      } catch {
+        vCLog("Personal Lexicon save failed after selection: \(error.localizedDescription)")
+      }
+    }
     host.writeUserPhrasesAtOnce = { LXMgr.writeUserPhrasesAtOnce($0, areWeFiltering: $1) }
     host.bleachSpecifiedSuggestions = { targets, headReadings, mode in
       if let headReadings, !headReadings.isEmpty {

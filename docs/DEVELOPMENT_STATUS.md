@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.2 first vertical slice — Personal Lexicon + explicit English override**
+**V0.2 first vertical slice — Personal Lexicon + explicit English override + selection learning**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -47,6 +47,7 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 - Shift-produced printable ASCII is handled before candidate selection (`Shift+2 → @`, `Shift+/ → ?`, uppercase letters): ✅ code/tests; installed-Mac E2E pending
 - Explicit English override in Hybrid: `Enter` commits the raw token, `Shift+Space` commits raw token + half-width space even when Chinese candidates exist: ✅
 - Personal Lexicon activation safety-net reload for empty runtime stores with persisted JSON: ✅
+- Multiple Personal Lexicon entries may share the same full/initials key; actual selection increments `selectionCount`, updates `lastUsedAt`, reorders peers, and persists immediately: ✅
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -83,7 +84,7 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 1. Install the current V0.2 build and verify `space + Enter → space`, `space + Shift+Space → space `, and `Shift+2 → @`.
 2. Verify `tdny` again after activation; locally persisted `台達能源` should be restored ahead of factory abbreviation `替代能源`.
 3. Continue broader English-intent reuse from MixedAlphanumerical heuristics so ordinary English words do not surface accidental Chinese abbreviation candidates by default.
-4. Add Settings UI CRUD/edit-pronunciation support, then automatic promotion/learning.
+4. Add Settings UI CRUD/edit-pronunciation support, then automatic promotion from observed phrases.
 
 ## V0.2 implementation status
 
@@ -102,6 +103,7 @@ local reading/key generation, atomic macOS persistence, and zero-candidate ASCII
 - [x] Shift-ASCII routing regression (`@`, `?`, uppercase) and candidate-collision protection
 - [x] explicit English override regression (`Enter`, `Shift+Space`)
 - [x] Personal Lexicon activation reload regression
+- [x] same-key multi-entry Personal Lexicon selection learning + persistence regression
 - [ ] installed-Mac E2E for `Shift+2 → @`
 - [ ] installed-Mac E2E for English override and `tdny` activation reload
 - [ ] Settings UI add/edit/remove/search
@@ -204,15 +206,22 @@ persisted Personal Lexicon on input-source activation only when the current mode
 empty, closing a lifecycle gap observed after IME replacement/restart. LXMgr startup/activation reload
 regressions both pass.
 
+Personal Lexicon ranking now learns only from confirmed selections. Multiple entries may share the same
+full-Pinyin or initials key and remain simultaneously visible; selecting one increments its persisted
+`selectionCount` and refreshes `lastUsedAt`, so repeatedly chosen Personal entries move ahead of their
+Personal peers without deleting alternatives. Factory/CIN candidates remain separate sources and continue
+to coexist in the merged Hybrid candidate list. Selection-learning and persistence regressions pass, as do
+the full LibVanguard package suite, LXMgrTests, and `make debug`.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: 30d50675 plus current English-override / activation-reload working-tree fix (commit pending)
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; zero-candidate ASCII fallback; Shift-ASCII routing; explicit English override; activation safety-net reload
-Tests: full LibVanguard package tests PASS including IH109; PersonalLexiconTests PASS; LXMgrTests 20/20 PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: 79042b12 plus current Personal Lexicon selection-learning working-tree fix (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; zero-candidate ASCII fallback; Shift-ASCII routing; explicit English override; activation safety-net reload; same-key Personal selection learning/persistence
+Tests: full LibVanguard package tests PASS including IH110; PersonalLexiconTests PASS including same-key reorder; LXMgrTests 20/20 PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
 Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal Lexicon file persisted; explicit-English + activation-reload E2E pending installation of current fix
 Known issues: broad English-intent detection is not yet integrated into Hybrid, so ordinary English tokens may still surface accidental Pinyin-abbreviation candidates; users can now explicitly force ASCII with Enter / Shift+Space

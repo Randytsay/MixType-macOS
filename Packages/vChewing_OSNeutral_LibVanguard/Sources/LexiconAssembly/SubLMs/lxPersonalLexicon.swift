@@ -123,6 +123,17 @@ extension LXAssembly {
       return true
     }
 
+    @discardableResult
+    public func recordSelection(id: UUID, now: Date = Date()) -> Bool {
+      guard let index = entries.firstIndex(where: { $0.id == id && !$0.disabled }) else {
+        return false
+      }
+      entries[index].selectionCount += 1
+      entries[index].lastUsedAt = now
+      rebuildIndexes()
+      return true
+    }
+
     public func matches(for rawKey: String) -> [PersonalLexiconMatch] {
       let key = Self.normalizeLookupKey(rawKey)
       guard !key.isEmpty else { return [] }
@@ -139,6 +150,9 @@ extension LXAssembly {
       }
       return result.sorted {
         if $0.score != $1.score { return $0.score > $1.score }
+        let lhsLastUsed = $0.entry.lastUsedAt ?? .distantPast
+        let rhsLastUsed = $1.entry.lastUsedAt ?? .distantPast
+        if lhsLastUsed != rhsLastUsed { return lhsLastUsed > rhsLastUsed }
         if $0.entry.updatedAt != $1.entry.updatedAt { return $0.entry.updatedAt > $1.entry.updatedAt }
         return $0.entry.phrase < $1.entry.phrase
       }

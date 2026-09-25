@@ -41,6 +41,8 @@ public final class SessionHost {
   public var isStateDataFilterableForMarked: (_ state: IMEStateData) -> Bool = { _ in false }
   /// 儲存感知模型資料。
   public var savePerceptionOverrideModelData: () -> () = {}
+  /// 儲存 MixType Personal Lexicon。參數為當前 LXFacade 是否為簡體模式。
+  public var savePersonalLexiconData: (_ isCHS: Bool) -> () = { _ in }
   /// 直接寫入使用者語彙。
   public var writeUserPhrasesAtOnce: (_ phrase: UserPhraseInsertable, _ areWeFiltering: Bool) -> Bool =
     { _, _ in false }
