@@ -425,6 +425,9 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
     didSet { didAskForSyncingLMPrefs?() }
   }
 
+  @AppProperty(userDef: .kHybridCassettePinyinEnabled)
+  public var hybridCassettePinyinEnabled: Bool
+
   @AppProperty(userDef: .kSuppressFactoryUnigramsOfKanaSyllables)
   public var suppressFactoryUnigramsOfKanaSyllables: Bool {
     didSet { didAskForSyncingLMPrefs?() }

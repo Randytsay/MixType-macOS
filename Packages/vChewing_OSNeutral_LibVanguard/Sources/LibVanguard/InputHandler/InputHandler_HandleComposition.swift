@@ -21,12 +21,14 @@ extension InputHandlerProtocol {
     case .haninKeyboardSymbol where [[], .shift].contains(input.keyModifierFlags):
       return HaninSymbolTypewriter(self).handle(input)
     case .vChewingFactory where hardRequirementMet:
-      // 打字模式分派：磁帶走 CassetteTypewriter；注音鍵盤在混輸啟用時走
+      // 打字模式分派：磁帶走 CassetteTypewriter；Hybrid 走獨立協調入口；注音鍵盤在混輸啟用時走
       // MixedAlphanumericalTypewriter；拼音鍵盤與狂拼皆走 BPMFFullMatchTypewriter
       // （狂拼邏輯由型別內部的狂拼閘門處理，不另設型別）。
       switch typingMode {
       case .cassette:
         return CassetteTypewriter(self).handle(input)
+      case .hybridCassettePinyin:
+        return HybridCassettePinyinTypewriter(self).handle(input)
       case .bopomofoKeyblock:
         if prefs.mixedAlphanumericalEnabled {
           return MixedAlphanumericalTypewriter(self).handle(input)

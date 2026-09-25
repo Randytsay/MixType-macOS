@@ -12,9 +12,10 @@ Specification:
 
 ## Current phase
 
-**Pre-development Mac baseline — build and package tests pass; install/CIN verification pending**
+**V0.1 Phase A — Hybrid mode plumbing implemented; validation in progress**
 
-No MixType hybrid engine implementation has started yet.
+The clean Mac baseline has passed, including real IME installation and cassette/CIN input.
+Phase A establishes the Hybrid routing seam only; real CIN + Pinyin candidate fusion remains Phase B.
 
 ## Repository state
 
@@ -24,11 +25,11 @@ No MixType hybrid engine implementation has started yet.
 - Development workflow / multi-agent rules: ✅
 - WebCodex VPS managed project registered and synced to `origin/main`: ✅
 - macOS local clone under CoS Mac: ✅ (`~/Coding/MixType-macOS`)
-- clean upstream-derived Mac build baseline: ⚠️ partial; full Xcode 27 is installed, LibVanguard package tests pass, and both Debug app bundles build and validate; real IME installation and CIN typing remain unverified
-- real IME installation baseline: ⬜
-- real CIN/Boshiamy cassette baseline: ⬜
-- V0.1 feature branch: ⬜
-- Hybrid implementation: ⬜
+- clean upstream-derived Mac build baseline: ✅
+- real IME installation baseline: ✅; Debug vChewing installs alongside OpenVanilla without overwrite
+- real CIN/Boshiamy cassette baseline: ✅; a local private CIN was loaded and real cassette composition/commit was verified
+- V0.1 feature branch: ✅ (`feat/hybrid-input-v01`)
+- Hybrid Phase A implementation: ✅; dedicated routing seam implemented, candidate fusion intentionally not started in this batch
 - V0.1 Phase A read-only implementation audit: ✅ (`docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md`)
 - V0.2 Personal Lexicon + Auto Promotion specification: ✅ (`docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md`)
 
@@ -38,37 +39,41 @@ No MixType hybrid engine implementation has started yet.
 - Swift: Apple Swift 6.4 (`swiftlang-6.4.0.34.1`), satisfying the repository's Swift 6.4 minimum.
 - Active developer directory: `/Applications/Xcode.app/Contents/Developer`.
 - Full Xcode: Xcode 27.0, build `27A266a`; macOS 27 SDK is available. `xcodebuild -checkFirstLaunchStatus` passes.
-- Fork reconciliation: local `main` and `origin/main` both at `3164ca66273f30fbbe8b8e82dd9961b65a35a80d`; upstream base remains `62936e41e9319dce482a291bf13b6bfaa194c6f7`.
+- Fork reconciliation before Phase A: `origin/main` at `d606bc7499f05dc25e2e85e29a844f9af81d5d55`; upstream base remains `62936e41e9319dce482a291bf13b6bfaa194c6f7`.
 - Local core build: `swift build -c debug --product Vanguard` from `Packages/vChewing_OSNeutral_LibVanguard` — **PASS**.
 - Local LibVanguard tests: `make test` from `Packages/vChewing_OSNeutral_LibVanguard` — **PASS**.
 - Local root SwiftPM debug build: `make spmDebug` — **PASS**.
 - Local Debug app bundle assembly: `make debug` — **PASS** for both `vChewing.app` and `vChewingInstaller.app`; both pass strict codesign verification and Info.plist lint.
 - Running `make test` at the repository root stops at `swift test --no-parallel` with `no tests found`; use the LibVanguard package test command above for the current package-test gate.
 - Upstream CI for the shared code base `62936e41e9319dce482a291bf13b6bfaa194c6f7`: Linux LibVanguard, Windows LibVanguard, and macOS SPM tests/package workflows all completed successfully. This supports that the observed local failures are toolchain-environment failures rather than known source regressions.
-- No IME installation, OpenVanilla coexistence, private CIN loading, or real cassette typing test has been performed yet.
+- Debug `vChewing.app` was installed in the current user's Input Methods directory and passed strict codesign verification.
+- OpenVanilla remained installed and operational; bundle names and identifiers are distinct and no OpenVanilla files were deleted or overwritten.
+- A local private CIN was copied only into vChewing's sandbox cassette cache; the private CIN contents and paths are not committed to Git.
+- Real cassette input was verified on macOS: a known private-CIN code produced the expected Chinese character in the composition buffer and Enter committed it. The composition-first behavior is the clean upstream baseline, not a Hybrid regression.
 
 ## Planning completed before implementation
 
-- Phase A exact preference/routing/typewriter/test touchpoints have been audited read-only.
-- Phase A is intentionally not implemented until the IME installation, coexistence, and CIN typing baseline gates pass.
+- Phase A exact preference/routing/typewriter/test touchpoints were audited before implementation.
+- The Mac baseline gate passed before the feature branch was created.
+- Phase A adds a default-off Hybrid preference, semantic `hybridCassettePinyin` mode, and a dedicated single-event typewriter route. The Phase A typewriter deliberately delegates to cassette behavior only; it does not invoke cassette and Pinyin typewriters sequentially.
+- Focused Phase A tests cover the mode matrix and a cassette-compatible single-route sentinel.
 - V0.2 Personal Lexicon architecture, reading resolution, auto-promotion policy, persistence, ranking and acceptance tests are now specified.
 
 ## Required next steps
 
-1. Install the baseline IME and verify that it coexists with OpenVanilla without deleting or overwriting OpenVanilla.
-2. Verify baseline cassette/CIN behavior with a local private CIN file without committing that file.
-3. Only after those gates pass, create and switch to:
-   `feat/hybrid-input-v01`.
-4. Begin V0.1 Phase A.
+1. Validate the Phase A feature commit in GitHub CI and on the Mac once the CoS Mac tunnel is available again.
+2. Begin Phase B on `feat/hybrid-input-v01`: add non-mutating CIN/full-Pinyin/abbreviated-Pinyin candidate providers and deterministic merge/deduplication.
+3. Preserve the invariant that one physical key event has one Hybrid coordinator owner; never invoke the cassette and BPMF typewriters sequentially against shared state.
+4. Keep Personal Lexicon, mixed English detection, and Settings UI work out of Phase B.
 
 ## V0.1 phase checklist
 
 ### Phase A — Hybrid mode plumbing
 
-- [ ] add Hybrid preference
-- [ ] add `hybridCassettePinyin` typing mode
-- [ ] add dedicated hybrid dispatch path
-- [ ] add regression coverage proving Hybrid-off preserves upstream cassette behavior
+- [x] add Hybrid preference (default off)
+- [x] add `hybridCassettePinyin` typing mode with fail-closed activation
+- [x] add dedicated hybrid dispatch path
+- [x] add focused regression coverage for Hybrid-off mode selection and the single Hybrid route
 
 ### Phase B — candidate providers and merge
 
@@ -104,20 +109,21 @@ No MixType hybrid engine implementation has started yet.
 
 ## Current blockers
 
-The build/test environment blocker is resolved with full Xcode 27. Per the baseline gate, Phase A must wait until the IME is installed and verified alongside OpenVanilla, and cassette/CIN typing has been tested with a private local CIN file.
+The Mac baseline blocker is resolved. The WebCodex VPS does not currently have a Swift executable, so it cannot compile or run LibVanguard tests locally; the attempted focused test command fails at environment lookup with `swift: not found`. GitHub CI and CoS Mac are therefore the authoritative compile/test gates for the Phase A feature commit.
+
+The CoS Mac connector tunnel is temporarily unavailable after the input-source login/refresh sequence. This does not invalidate the already completed clean-baseline evidence, but feature-branch macOS runtime validation must wait for that connector to reconnect.
 
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
-Canonical branch: main
-Baseline evidence commit: 6755ccec644ac46ca566aeb71ab4a10675999055
-Baseline status merged by PR #1
-Completed: local clone; origin/upstream reconciliation; host/toolchain audit; local Vanguard product build
-Tests: `make test` blocked before execution by missing FoundationMacros in Command Line Tools; `swift build -c debug --product Vanguard` PASS
-CI: no fork run observed for the docs-only fork commits; upstream shared base 62936e41 has passing Linux, Windows, and macOS workflows
-Mac runtime validation: not started; full IME build/install/CIN validation blocked until full Xcode 27 is available
-Known issues: active developer directory is Command Line Tools only; missing FoundationMacros and PreviewsMacros
-Next unfinished item: install/select full Xcode 27, rerun baseline, then create feat/hybrid-input-v01 and start Phase A
+Current branch: feat/hybrid-input-v01
+Latest commit: pending Phase A commit
+Completed: Mac baseline; IME/OpenVanilla coexistence; private-CIN cassette runtime check; Phase A preference/mode/dedicated route/test implementation
+Tests: pre-feature Mac LibVanguard make test PASS; pre-feature make debug PASS; WebCodex feature test attempt blocked because Swift is not installed on the VPS
+CI: pending Phase A push
+Mac runtime validation: clean baseline PASS; Phase A feature commit validation pending CoS Mac reconnect
+Known issues: no Phase B candidate fusion yet, so Hybrid Phase A intentionally behaves as the cassette-compatible routing skeleton
+Next unfinished item: validate Phase A commit, then implement Phase B actual CIN + Pinyin candidate providers and merge
 ```

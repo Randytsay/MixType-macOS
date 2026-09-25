@@ -56,6 +56,7 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kMinCellWidthForHorizontalMatrix = "MinCellWidthForHorizontalMatrix"
   case kSpaceKeyBehaviorAgainstICB = "SpaceKeyBehaviorAgainstICB"
   case kCassetteEnabled = "CassetteEnabled"
+  case kHybridCassettePinyinEnabled = "HybridCassettePinyinEnabled"
   case kMixedAlphanumericalEnabled = "MixedAlphanumericalEnabled"
   case kMixedAlnumJudgeReadingsBySequentialRawKeyOrder = "MixedAlnumJudgeReadingsBySequentialRawKeyOrder"
   case kEnableLatchedAlnumStateInMixedAlnumMode = "EnableLatchedAlnumStateInMixedAlnumMode"
@@ -664,6 +665,7 @@ extension UserDef {
     case .kMinCellWidthForHorizontalMatrix: return .integer(0)
     case .kSpaceKeyBehaviorAgainstICB: return .integer(1)
     case .kCassetteEnabled: return .bool(false)
+    case .kHybridCassettePinyinEnabled: return .bool(false)
     case .kMixedAlphanumericalEnabled: return .bool(false)
     case .kMixedAlnumJudgeReadingsBySequentialRawKeyOrder: return .bool(true)
     case .kEnableLatchedAlnumStateInMixedAlnumMode: return .bool(false)
@@ -952,6 +954,11 @@ extension UserDef {
     case .kCassetteEnabled: return .init(
         userDef: self, shortTitle: "i18n:UserDef.kCassetteEnabled.shortTitle",
         description: "i18n:UserDef.kCassetteEnabled.description"
+      )
+    case .kHybridCassettePinyinEnabled: return .init(
+        userDef: self,
+        shortTitle: "i18n:UserDef.kHybridCassettePinyinEnabled.shortTitle",
+        description: "i18n:UserDef.kHybridCassettePinyinEnabled.description"
       )
     case .kMixedAlphanumericalEnabled: return .init(
         userDef: self,
