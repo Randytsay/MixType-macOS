@@ -22,6 +22,7 @@ No MixType hybrid engine implementation has started yet.
 - MixType README/project positioning: ✅
 - V0.1 Hybrid technical plan: ✅
 - Development workflow / multi-agent rules: ✅
+- WebCodex VPS managed project registered and synced to `origin/main`: ✅
 - macOS local clone under CoS Mac: ⬜
 - clean upstream-derived Mac build baseline: ⬜
 - real IME installation baseline: ⬜
