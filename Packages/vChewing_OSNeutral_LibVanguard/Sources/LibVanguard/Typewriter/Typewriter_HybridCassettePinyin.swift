@@ -39,6 +39,23 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
       return true
     }
 
+    // Hybrid 的 inline candidate pane 直接以目前畫面 selectionKeys 接受主鍵盤數字。
+    // 不沿用 Cassette/Furious 的 Shift 判斷，確保 UI 標示「5」時 plain 5 就選該候選。
+    if session.state.isCandidateContainer,
+       input.isMainAreaNumKey,
+       input.commonKeyModifierFlags.isEmpty,
+       let ctlCandidate = session.candidateController(), ctlCandidate.visible {
+      let matched = (input.mainAreaNumKeyChar ?? input.inputTextIgnoringModifiers ?? input.text)
+        .lowercased()
+      if let keyLabelIndex = session.selectionKeys.enumerated().first(where: {
+        String($0.element).lowercased() == matched
+      })?.offset,
+         let candidateIndex = ctlCandidate.candidateIndexAtKeyLabelIndex(keyLabelIndex) {
+        session.candidatePairSelectionConfirmed(at: candidateIndex)
+        return true
+      }
+    }
+
     if session.state.isCandidateContainer,
        handler.handleCandidate(input: input, ignoringModifiers: true) {
       return true
@@ -62,6 +79,17 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
 
     let rawInput = (input.inputTextIgnoringModifiers ?? input.text).lowercased()
     guard rawInput.count == 1 else { return nil }
+
+    // 空白狀態下，普通數字預設交還 client。只有磁帶真的存在以該數字開頭的碼時，
+    // 才把它視為 CIN raw key。如此可避免 Hybrid/Pinyin 把單獨的 0...9 當聲調或字根吞掉。
+    if input.isMainAreaNumKey,
+       input.commonKeyModifierFlags.isEmpty,
+       handler.calligrapher.isEmpty,
+       handler.assembler.isEmpty,
+       !handler.currentLM.lxQuerier.cassetteHasKeyPrefix(rawInput) {
+      return false
+    }
+
     let isCassetteKey = handler.currentLM.isThisCassetteKeyAllowed(key: rawInput)
     let isPinyinKey = handler.composer.inputValidityCheck(charStr: rawInput)
     guard isCassetteKey || isPinyinKey else { return nil }

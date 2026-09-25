@@ -2,6 +2,7 @@
 // ====================
 // This code is released under the SPDX-License-Identifier: `LGPL-3.0-or-later`.
 
+import Foundation
 import LXAssemblyMaterials4Tests
 import Shared
 import Tekkon
@@ -287,5 +288,151 @@ extension LibVanguardTestsRoot.InputHandlerTests {
         && $0.candidate.keyArray == ["ㄋㄥˊ", "ㄌㄧㄡˊ"]
         && $0.candidate.value == "能留"
     })
+  }
+
+  @Test
+  func test_IH096_HybridPlainDigitSelectsCandidateWhenCassetteSelectionKeysOverlapRoots() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    let cin = """
+    %ename HybridDigitSelectionFixture
+    %cname HybridDigitSelectionFixture
+    %sname HDIGIT
+    %selkey 0123456789
+    %chardef begin
+    a5 測
+    ab 字
+    %chardef end
+    """
+    let cinURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("hybrid-digit-selection-\(UUID().uuidString).cin")
+    try cin.write(to: cinURL, atomically: true, encoding: .utf8)
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      try? FileManager.default.removeItem(at: cinURL)
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testSession.mockCandidateController = nil
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    LXAssembly.LXFacade.loadCassetteData(path: cinURL.path)
+    #expect(testHandler.currentLM.areCassetteCandidateKeysShiftHeld)
+
+    let values = ["甲", "乙", "丙", "丁", "戊", "己"]
+    for (offset, value) in values.enumerated() {
+      testHandler.currentLM.insertTemporaryData(
+        unigram: .init(keyArray: ["ㄋㄥˊ"], value: value, score: 100 - Double(offset)),
+        isFiltering: false
+      )
+    }
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("neng")
+    #expect(testSession.state.candidates.prefix(values.count).map(\.value) == values)
+    testSession.installMockCandidateController(visible: true, capacityPerPage: 10)
+    testSession.selectionKeys = "0123456789"
+
+    let digit5 = KBEvent.KeyEventData(chars: "5", keyCode: 23).asEvent
+    #expect(testHandler.triageInput(event: digit5))
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["己"])
+  }
+
+  @Test
+  func test_IH097_HybridLeadingDigitPassesThroughWhenNoCassetteCodeStartsWithDigit() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    let cin = """
+    %ename HybridLeadingDigitFixture
+    %cname HybridLeadingDigitFixture
+    %sname HLEADDIGIT
+    %selkey 0123456789
+    %chardef begin
+    a5 測
+    ab 字
+    %chardef end
+    """
+    let cinURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("hybrid-leading-digit-\(UUID().uuidString).cin")
+    try cin.write(to: cinURL, atomically: true, encoding: .utf8)
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      try? FileManager.default.removeItem(at: cinURL)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    LXAssembly.LXFacade.loadCassetteData(path: cinURL.path)
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    let digit5 = KBEvent.KeyEventData(chars: "5", keyCode: 23).asEvent
+    #expect(!testHandler.triageInput(event: digit5))
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testSession.state.type == .ofEmpty)
+  }
+
+  @Test
+  func test_IH098_HybridLeadingDigitStillFeedsCassetteWhenCodePrefixExists() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    let cin = """
+    %ename HybridDigitPrefixFixture
+    %cname HybridDigitPrefixFixture
+    %sname HDIGITPREFIX
+    %selkey 1234567890
+    %chardef begin
+    5a 測
+    ab 字
+    %chardef end
+    """
+    let cinURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("hybrid-digit-prefix-\(UUID().uuidString).cin")
+    try cin.write(to: cinURL, atomically: true, encoding: .utf8)
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      try? FileManager.default.removeItem(at: cinURL)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    LXAssembly.LXFacade.loadCassetteData(path: cinURL.path)
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    #expect(testHandler.currentLM.lxQuerier.cassetteHasKeyPrefix("5"))
+    let digit5 = KBEvent.KeyEventData(chars: "5", keyCode: 23).asEvent
+    #expect(testHandler.triageInput(event: digit5))
+    #expect(testHandler.calligrapher == "5")
   }
 }

@@ -83,6 +83,18 @@ extension LXAssembly.LXFacade {
 }
 
 extension LXAssembly.LXFacade.LXQuerier {
+  /// Hybrid 專用：檢查目前磁帶是否存在以指定 raw key prefix 開頭的碼。
+  ///
+  /// 主要用來區分「數字是 CIN 起始字根」與「使用者只是要輸入一般數字」；
+  /// 不展開候選、不修改磁帶狀態。
+  public func cassetteHasKeyPrefix(_ prefix: String) -> Bool {
+    guard !prefix.isEmpty else { return false }
+    if !LXAssembly.LXFacade.lxCassette.charDefMap.prefixScan(prefix: prefix).isEmpty {
+      return true
+    }
+    return !LXAssembly.LXFacade.lxCassette.symbolDefMap.prefixScan(prefix: prefix).isEmpty
+  }
+
   /// Hybrid 專用：以指定原始鍵碼唯讀查詢磁帶的精確候選。
   ///
   /// 此 API 不經一般 `grams(for:)` 管線，避免 Hybrid 在辨識候選來源時把
