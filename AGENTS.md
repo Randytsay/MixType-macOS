@@ -1,3 +1,28 @@
+# MixType Project Instructions
+
+> These MixType-specific instructions take precedence for work in this fork. The upstream vChewing handbook below remains authoritative for inherited technical constraints unless a MixType document explicitly overrides a project workflow or product decision.
+
+## MixType development rules
+
+1. **GitHub is the single source of truth.** Do not treat local CoS Mac state, WebCodex VPS state, or chat history as authoritative when they differ from the repository.
+2. **Always reconcile before editing.** Inspect git status/branch/log, fetch remote state, read `docs/DEVELOPMENT_STATUS.md`, and read the applicable milestone specification.
+3. **Do not develop directly on `main` for feature work.** Use milestone/task branches such as `feat/hybrid-input-v01`.
+4. **Work in reviewable phases.** Do not attempt an entire milestone as one opaque change.
+5. **Commit and push completed batches.** Important completed work must not exist only in an uncommitted local workspace.
+6. **Update `docs/DEVELOPMENT_STATUS.md` after each completed batch or handoff.**
+7. **macOS runtime claims require Mac validation.** WebCodex/VPS builds and unit tests cannot substitute for InputMethodKit, installation, candidate-window, keyboard-event, CIN-loading, or real typing verification on macOS.
+8. **CoS Mac is the primary real-runtime validation environment.** WebCodex is appropriate for long-running code work, refactors, tests, CI, and documentation that do not require live macOS IME behavior.
+9. **Preserve upstream licensing and attribution.** MixType is a modified fork and must remain clearly distinguished from the vChewing product name.
+10. **Personal vocabulary is local-first and private by default.** Never commit personal dictionaries, private CIN files, names/usage histories, secrets, tokens, or credentials.
+11. Before Hybrid feature development, establish the clean Mac baseline required by `docs/DEVELOPMENT_WORKFLOW.md`.
+12. For V0.1 implementation, follow `docs/MIXTYPE_V0.1_HYBRID_PLAN.md` and the current phase in `docs/DEVELOPMENT_STATUS.md`.
+
+Canonical workflow: `docs/DEVELOPMENT_WORKFLOW.md`
+
+Canonical status/handoff: `docs/DEVELOPMENT_STATUS.md`
+
+---
+
 # AGENTS.md
 
 This handbook briefs AI coding assistants on the vChewing (唯音) macOS repository. Use only English or zh-Hant-TW for docs/comments/reviews; zh-Hans is allowed only in filename stems ending with -CHS, and there the required style is **zh-Hans-TW** — simplify the characters only and keep Taiwan vocabulary.
