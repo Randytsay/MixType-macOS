@@ -112,18 +112,25 @@ extension InputHandlerProtocol {
     -> HybridCandidateSelectionOutcome? {
     guard typingMode == .hybridCassettePinyin else { return nil }
     let offers = hybridCandidateOffers(for: calligrapher)
-    guard let offer = offers.first(where: {
-      $0.candidate.keyArray == candidate.keyArray && $0.candidate.value == candidate.value
-    }) else { return nil }
+    // `hybridCandidateOffers` 已經以顯示值去重；因此在確認階段，顯示值就是
+    // 當前 raw-key buffer 內穩定且唯一的候選 identity。不要要求 UI state 裡
+    // 保存的 keyArray 與第二次 lookup 完全一致：factory / user data 可能對同一
+    // 顯示字提供多個等價讀音，重新查詢時 canonical keyArray 可能不同。
+    guard let offer = offers.first(where: { $0.candidate.value == candidate.value }) else {
+      return nil
+    }
+    let canonicalCandidate = offer.candidate
 
     switch offer.source {
     case .cassetteExact, .cassetteQuick:
-      guard !candidate.value.isEmpty, candidate.value != currentLM.nullCandidateInCassette else {
+      guard !canonicalCandidate.value.isEmpty,
+            canonicalCandidate.value != currentLM.nullCandidateInCassette
+      else {
         return nil
       }
-      return .commit(committableDisplayText(sansReading: true) + candidate.value)
+      return .commit(committableDisplayText(sansReading: true) + canonicalCandidate.value)
     case .pinyinFull, .pinyinAbbreviation:
-      guard confirmHybridPinyinCandidate(candidate) else { return nil }
+      guard confirmHybridPinyinCandidate(canonicalCandidate) else { return nil }
       return .composition
     }
   }

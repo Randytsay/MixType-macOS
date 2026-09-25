@@ -435,4 +435,57 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.triageInput(event: digit5))
     #expect(testHandler.calligrapher == "5")
   }
+
+  @Test
+  func test_IH099_HybridSelectionResolvesByDeduplicatedDisplayValue() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    [
+      Homa.Gram(keyArray: ["ㄋㄧˇ"], value: "你", score: 5),
+      Homa.Gram(keyArray: ["ㄏㄠˇ"], value: "好", score: 5),
+      Homa.Gram(keyArray: ["ㄋㄧˇ", "ㄏㄠˇ"], value: "你好", score: 10),
+    ].forEach {
+      testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false)
+    }
+
+    testSession.resetInputHandler(forceComposerCleanup: true)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("nihao")
+    let candidateIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "你好" })
+    )
+
+    // 模擬 production candidate UI 持有同一顯示值、但其 keyArray 與重新查詢後的
+    // canonical offer 不完全相同。選字仍應以 Hybrid 已去重的顯示值解析來源。
+    var staleState = testSession.state
+    staleState.candidates[candidateIndex] = (keyArray: ["ㄨㄟˇ"], value: "你好")
+    testSession.switchState(staleState)
+    testSession.candidatePairSelectionConfirmed(at: candidateIndex)
+
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.actualKeys == ["ㄋㄧˇ", "ㄏㄠˇ"])
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["你好"])
+  }
 }
