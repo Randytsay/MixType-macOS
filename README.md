@@ -21,6 +21,16 @@ MixType 預計朝以下方向發展：
 >
 > 本專案目前剛由 vChewing fork 建立。vChewing 原有功能與架構仍為目前基礎；上面列出的 Hybrid CIN + Pinyin、簡拼學習、候選融合與完整中英混打能力屬於 **MixType 的開發目標**，並非目前所有功能都已完成。
 
+
+## 開發文件
+
+MixType 採用 GitHub 作為唯一開發真相來源，CoS Mac、WebCodex 與其他 Coding Agent 均需依同一套規格、狀態與交接流程協作。
+
+- [Development Workflow](./docs/DEVELOPMENT_WORKFLOW.md) — 分支、reconciliation、CoS Mac / WebCodex 分工、測試與真機驗收規則
+- [Development Status](./docs/DEVELOPMENT_STATUS.md) — 目前做到哪、下一步與跨 Agent 交接狀態
+- [V0.1 Hybrid CIN + Pinyin Plan](./docs/MIXTYPE_V0.1_HYBRID_PLAN.md) — 第一階段 Hybrid 輸入技術規格
+
+
 ## Upstream 與授權
 
 MixType fork 自 **vChewing macOS**，並保留原專案的授權、著作權聲明與第三方元件授權。後續修改與散布將遵循上游授權條款；本分支使用 **MixType** 名稱，以與上游 vChewing 正式版本清楚區分。
