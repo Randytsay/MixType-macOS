@@ -362,11 +362,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: d0aa27d1 plus composed-Pinyin N-best working tree (commit pending)
+Latest commit: 69122782
 Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow; exact-commit composition phrase learning with independent pending persistence; bounded N-best full-Pinyin composition fallback
 Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 27/27 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin and composition-learning builds installed; composed-Pinyin N-best build pending installation; existing private Personal/CIN data preserved
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin, composition-learning, and composed-Pinyin N-best builds installed with strict codesign verification; local private `過來一下 → guolaiyixia / glyx` entry seeded for immediate live acceptance; existing private Personal/CIN data preserved
 Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and final live composed-Pinyin / composition-learning persistence acceptance remain
-Next unfinished item: commit/push/install composed-Pinyin N-best, verify live `guolaiyixia → 過來一下`, then verify a newly composed phrase promotes after three exact commits and survives restart
+Next unfinished item: verify live `guolaiyixia → 過來一下` and `glyx → 過來一下`, then verify a newly composed phrase promotes after three exact commits and survives restart
 ```
