@@ -141,7 +141,48 @@ extension LXAssembly.LXFacade {
   public static func getFactoryExactReadingChains(
     for values: Set<String>
   ) -> [String: [[String]]] {
-    factoryTrie?.exactReadingChains(for: values) ?? [:]
+    guard !values.isEmpty else { return [:] }
+
+    var result: [String: [[String]]] = [:]
+    var missing = Set<String>()
+    for value in values {
+      if let cached = factoryExactReadingChainsCache[value] {
+        if !cached.isEmpty { result[value] = cached }
+      } else {
+        missing.insert(value)
+      }
+    }
+
+    if !missing.isEmpty {
+      let scanned = factoryTrie?.exactReadingChains(for: missing) ?? [:]
+      for value in missing {
+        let chains = scanned[value] ?? []
+        factoryExactReadingChainsCache[value] = chains
+        if !chains.isEmpty { result[value] = chains }
+      }
+    }
+    return result
+  }
+
+  public enum FactoryExactReadingStatus: Sendable, Equatable {
+    case phraseNotFound
+    case supported
+    case unsupported
+  }
+
+  /// Auto-promotion promotion gate：
+  /// - factory 沒有整詞：允許 user learning 決定新詞讀音。
+  /// - factory 有整詞：只允許 factory 明確支援的 reading chain。
+  ///
+  /// 這個檢查只應放在 promotion threshold 路徑，不進逐鍵輸入熱路徑。
+  public static func factoryExactReadingStatus(
+    phrase: String,
+    readings: [String]
+  ) -> FactoryExactReadingStatus {
+    guard !phrase.isEmpty, !readings.isEmpty else { return .unsupported }
+    let chains = getFactoryExactReadingChains(for: [phrase])[phrase] ?? []
+    guard !chains.isEmpty else { return .phraseNotFound }
+    return chains.contains(readings) ? .supported : .unsupported
   }
 
   func getHaninSymbolMenuUnigrams() -> [Homa.Gram] {

@@ -1485,6 +1485,107 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.assembler.assembledSentence.values.joined() == "過來一下")
   }
 
+  @Test
+  func test_IH532_SequentialSingleCharacterSelectionsLearnWeiHongPhrase() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let oldAutoPromotionEnabled = testHandler.prefs.mixTypeAutoPromotionEnabled
+    let oldThreshold = testHandler.prefs.mixTypeAutoPromotionThreshold
+    let oldEnglishIntent = testHandler.prefs.mixTypeEnglishIntentEnabled
+    var compositionPendingSaveCount = 0
+    var personalSaveCount = 0
+    SessionHost.shared.saveCompositionPhraseLearningData = { _ in compositionPendingSaveCount += 1 }
+    SessionHost.shared.savePersonalLexiconData = { _ in personalSaveCount += 1 }
+
+    defer {
+      testHandler.prefs.mixTypeAutoPromotionEnabled = oldAutoPromotionEnabled
+      testHandler.prefs.mixTypeAutoPromotionThreshold = oldThreshold
+      testHandler.prefs.mixTypeEnglishIntentEnabled = oldEnglishIntent
+      SessionHost.shared.saveCompositionPhraseLearningData = { _ in }
+      SessionHost.shared.savePersonalLexiconData = { _ in }
+      testHandler.currentLM.replacePersonalLexiconEntries([])
+      testHandler.currentLM.replaceCompositionPhraseLearningObservations([])
+      testHandler.currentLM.replaceSingleCharacterPreferenceEntries([])
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    testHandler.currentLM.replacePersonalLexiconEntries([])
+    testHandler.currentLM.replaceCompositionPhraseLearningObservations([])
+    testHandler.currentLM.replaceSingleCharacterPreferenceEntries([])
+    testHandler.currentLM.clearTemporaryData(isFiltering: false)
+    [
+      Homa.Gram(keyArray: ["ㄨㄟˊ"], value: "韋", score: 20),
+      Homa.Gram(keyArray: ["ㄨㄟˊ"], value: "為", score: 10),
+      Homa.Gram(keyArray: ["ㄏㄨㄥˊ"], value: "宏", score: 20),
+      Homa.Gram(keyArray: ["ㄏㄨㄥˊ"], value: "紅", score: 10),
+    ].forEach { testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false) }
+
+    testHandler.prefs.mixTypeAutoPromotionEnabled = true
+    testHandler.prefs.mixTypeAutoPromotionThreshold = 3
+    testHandler.prefs.mixTypeEnglishIntentEnabled = true
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    for expectedCount in 1 ... 3 {
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+
+      typeSentence("wei")
+      let weiIndex = try #require(testSession.state.candidates.firstIndex(where: { $0.value == "韋" }))
+      testSession.candidatePairSelectionConfirmed(at: weiIndex)
+      #expect(testHandler.assembler.assembledSentence.values.joined() == "韋")
+
+      typeSentence("hong")
+      let hongIndex = try #require(testSession.state.candidates.firstIndex(where: { $0.value == "宏" }))
+      testSession.candidatePairSelectionConfirmed(at: hongIndex)
+      #expect(testHandler.assembler.assembledSentence.values.joined() == "韋宏")
+
+      #expect(testHandler.triageInput(event: KBEvent.KeyEventData.dataEnterReturn.asEvent))
+      #expect(testSession.recentCommissions.last == "韋宏")
+
+      if expectedCount < 3 {
+        #expect(testHandler.currentLM.personalLexiconEntries.isEmpty)
+        #expect(
+          testHandler.currentLM.compositionPhraseLearningObservations.first?.occurrenceCount == expectedCount
+        )
+      }
+    }
+
+    let promoted = try #require(
+      testHandler.currentLM.personalLexiconEntries.first(where: { $0.phrase == "韋宏" })
+    )
+    #expect(promoted.source == .autoPromoted)
+    #expect(promoted.readings == ["ㄨㄟˊ", "ㄏㄨㄥˊ"])
+    #expect(promoted.fullPinyinKey == "weihong")
+    #expect(promoted.initialsKey == "wh")
+    #expect(promoted.selectionCount == 3)
+    #expect(testHandler.currentLM.compositionPhraseLearningObservations.isEmpty)
+    #expect(compositionPendingSaveCount == 3)
+    #expect(personalSaveCount == 1)
+
+    let fullOffer = try #require(
+      testHandler.hybridCandidateOffers(for: "weihong").first(where: { $0.candidate.value == "韋宏" })
+    )
+    #expect(fullOffer.source == .personalFullPinyin)
+    let initialsOffer = try #require(
+      testHandler.hybridCandidateOffers(for: "wh").first(where: { $0.candidate.value == "韋宏" })
+    )
+    #expect(initialsOffer.source == .personalInitials)
+  }
+
   private func verifyNativePhoneticPersonalLexicon(
     parser: KeyboardParser,
     expectedProvider: Shared.MixTypeBaseInputProvider

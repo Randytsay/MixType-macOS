@@ -35,6 +35,9 @@ extension InputHandlerProtocol {
       return
     case .pending:
       SessionHost.shared.saveCompositionPhraseLearningData(currentLM.isCHS)
+    case .rejectedUnsupportedFactoryReading:
+      // threshold 時已移除無法由 factory 驗證的 pending observation，立即落盤。
+      SessionHost.shared.saveCompositionPhraseLearningData(currentLM.isCHS)
     case .promoted:
       // 先落長期 Personal，再落「已移除 observation」的 composition pending 檔。
       SessionHost.shared.savePersonalLexiconData(currentLM.isCHS)
@@ -84,6 +87,9 @@ extension InputHandlerProtocol {
     case .ignored, .alreadyPersonal:
       return
     case .pending:
+      SessionHost.shared.savePersonalLexiconPromotionData(currentLM.isCHS)
+    case .rejectedUnsupportedFactoryReading:
+      // threshold 時已移除無法由 factory 驗證的 pending observation，立即落盤。
       SessionHost.shared.savePersonalLexiconPromotionData(currentLM.isCHS)
     case .promoted:
       // 先落長期 Personal，再落「已移除該 observation」的 pending 檔。

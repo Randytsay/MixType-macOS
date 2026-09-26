@@ -61,6 +61,7 @@ extension LXAssembly {
     case ignored
     case alreadyPersonal
     case pending(count: Int)
+    case rejectedUnsupportedFactoryReading
     case promoted(PersonalLexiconEntry)
   }
 

@@ -674,6 +674,67 @@ final class LXMgrTests {
     #expect((yiXiaTone1 + yiXiaTone2).contains { $0.isUnigram && $0.current == "一下" })
   }
 
+  @Test
+  func test036_LXMgr_ProductionFactoryReadingGatePreservesLegitimateVariants() throws {
+    defer { LXAssembly.LXFacade.disconnectFactoryDictionary() }
+    let path = try #require(LXMgr.getCoreDictionaryDBPath(factory: true))
+    LXMgr.connectCoreDB(dbPath: path)
+
+    let chains = LXAssembly.LXFacade.getFactoryExactReadingChains(for: ["什麼"])["什麼"] ?? []
+    #expect(chains.contains(["ㄕㄜˊ", "ㄇㄛ˙"]))
+    #expect(chains.contains(["ㄕㄜˊ", "ㄇㄜ˙"]))
+    #expect(chains.contains(["ㄕㄣˊ", "ㄇㄛ˙"]))
+    #expect(chains.contains(["ㄕㄣˊ", "ㄇㄜ˙"]))
+
+    #expect(
+      LXAssembly.LXFacade.factoryExactReadingStatus(
+        phrase: "什麼",
+        readings: ["ㄕㄜˊ", "ㄇㄛ˙"]
+      ) == .supported
+    )
+    #expect(
+      LXAssembly.LXFacade.factoryExactReadingStatus(
+        phrase: "什麼",
+        readings: ["ㄕㄜˇ", "ㄇㄚ"]
+      ) == .unsupported
+    )
+
+    let validFacade = LXAssembly.LXFacade(isCHS: false)
+    validFacade.replacePersonalLexiconEntries([])
+    validFacade.replacePersonalLexiconPromotionObservations([])
+    let validReadings = ["ㄕㄜˊ", "ㄇㄛ˙"]
+    #expect(validFacade.observePersonalLexiconPromotion(
+      phrase: "什麼", readings: validReadings, threshold: 3
+    ) == .pending(count: 1))
+    #expect(validFacade.observePersonalLexiconPromotion(
+      phrase: "什麼", readings: validReadings, threshold: 3
+    ) == .pending(count: 2))
+    let validThird = validFacade.observePersonalLexiconPromotion(
+      phrase: "什麼", readings: validReadings, threshold: 3
+    )
+    guard case let .promoted(validEntry) = validThird else {
+      Issue.record("A production-supported reading variant must remain promotable.")
+      return
+    }
+    #expect(validEntry.readings == validReadings)
+
+    let invalidFacade = LXAssembly.LXFacade(isCHS: false)
+    invalidFacade.replacePersonalLexiconEntries([])
+    invalidFacade.replacePersonalLexiconPromotionObservations([])
+    let invalidReadings = ["ㄕㄜˇ", "ㄇㄚ"]
+    #expect(invalidFacade.observePersonalLexiconPromotion(
+      phrase: "什麼", readings: invalidReadings, threshold: 3
+    ) == .pending(count: 1))
+    #expect(invalidFacade.observePersonalLexiconPromotion(
+      phrase: "什麼", readings: invalidReadings, threshold: 3
+    ) == .pending(count: 2))
+    #expect(invalidFacade.observePersonalLexiconPromotion(
+      phrase: "什麼", readings: invalidReadings, threshold: 3
+    ) == .rejectedUnsupportedFactoryReading)
+    #expect(invalidFacade.personalLexiconPromotionObservations.isEmpty)
+    #expect(invalidFacade.personalLexiconEntries.isEmpty)
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test

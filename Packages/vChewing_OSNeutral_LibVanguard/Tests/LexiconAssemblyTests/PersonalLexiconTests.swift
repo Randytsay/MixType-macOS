@@ -173,6 +173,54 @@ struct PersonalLexiconTests {
   }
 
   @Test
+  func testFactoryExactReadingCacheInvalidatesWhenFactoryReloads() throws {
+    defer { LXAssembly.LXFacade.disconnectFactoryDictionary() }
+    let fixtureA = """
+    #PRAGMA:VANGUARD_HOMA_LEXICON_HEADER
+    VERSION\t1.1
+    TYPE\tTYPING
+    READING_SEPARATOR\t-
+    ENTRY_COUNT\t1
+    KEY_COUNT\t1
+    #PRAGMA:VANGUARD_HOMA_LEXICON_VALUES
+    測試\t-1\t5
+    #PRAGMA:VANGUARD_HOMA_LEXICON_KEY_LINE_MAP
+    ㄘㄜˋ-ㄕˋ\t0\t1
+    """
+    let fixtureB = """
+    #PRAGMA:VANGUARD_HOMA_LEXICON_HEADER
+    VERSION\t1.1
+    TYPE\tTYPING
+    READING_SEPARATOR\t-
+    ENTRY_COUNT\t1
+    KEY_COUNT\t1
+    #PRAGMA:VANGUARD_HOMA_LEXICON_VALUES
+    測試\t-1\t5
+    #PRAGMA:VANGUARD_HOMA_LEXICON_KEY_LINE_MAP
+    ㄘㄜˋ-ㄕˊ\t0\t1
+    """
+
+    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: fixtureA))
+    #expect(
+      LXAssembly.LXFacade.factoryExactReadingStatus(
+        phrase: "測試", readings: ["ㄘㄜˋ", "ㄕˋ"]
+      ) == .supported
+    )
+
+    #expect(LXAssembly.LXFacade.connectToTestFactoryDictionary(textMapData: fixtureB))
+    #expect(
+      LXAssembly.LXFacade.factoryExactReadingStatus(
+        phrase: "測試", readings: ["ㄘㄜˋ", "ㄕˋ"]
+      ) == .unsupported
+    )
+    #expect(
+      LXAssembly.LXFacade.factoryExactReadingStatus(
+        phrase: "測試", readings: ["ㄘㄜˋ", "ㄕˊ"]
+      ) == .supported
+    )
+  }
+
+  @Test
   func testPersonalLexiconSelectionLearningReordersSameInitials() throws {
     let oldDate = Date(timeIntervalSince1970: 1_700_000_000)
     let newerDate = Date(timeIntervalSince1970: 1_700_100_000)

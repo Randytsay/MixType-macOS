@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.2 Batch B complete in code — Auto Promotion + composition phrase learning + Pinyin preference**
+**V0.2 final acceptance hardening complete in code — learning quality + phrase composition validated**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -31,6 +31,10 @@ Composition phrase learning now adds a second, independent learning signal: exac
 compositions of 2...6 characters accumulate in their own pending store and promote into the same Personal
 Lexicon after the configured threshold. This makes frequently composed phrases available through full,
 initials, and mixed-Pinyin lookup without conflating ordinary composition with explicit candidate selection.
+Final hardening adds a threshold-time factory-reading validation gate: existing factory phrases may only
+auto-promote with an exact reading chain that the factory itself supports, while genuinely new phrases
+remain learnable from their actual composition readings. The check is lazy-cached and invalidated whenever
+the factory dictionary reloads, so it does not enter the per-key hot path.
 
 ## Repository state
 
@@ -87,6 +91,9 @@ initials, and mixed-Pinyin lookup without conflating ordinary composition with e
 - single-character candidate order starts changing only after 3 explicit selections; the first 1–2 selections are recorded but do not reorder, reducing accidental-learning risk: ✅
 - Hybrid and native Pinyin candidate lists re-rank only single-character peers; longer words keep their original relative positions: ✅
 - regression locks `要 / 藥 / 耀` so repeated explicit selection of `耀` moves it ahead without deleting alternatives: ✅
+- auto-promotion threshold factory-reading gate rejects unsupported readings for known factory phrases while preserving legitimate multi-reading variants: ✅
+- exact-reading lookup is lazy-cached and cache invalidates on factory reload: ✅
+- final sequential-selection acceptance: `wei → 韋`, then `hong → 宏`, commit `韋宏` three times ⇒ Personal `weihong / wh`: ✅
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -120,11 +127,10 @@ initials, and mixed-Pinyin lookup without conflating ordinary composition with e
 
 ## Required next steps
 
-1. Install the composition-learning build and verify a real 2...6-character phrase reaches Personal Lexicon after three exact committed occurrences.
-2. Verify restart persistence of `composition-phrase-pending-cht.json` before threshold and Personal Lexicon after promotion.
-3. Complete Mac E2E for Zhuyin / Pinyin / CIN base-provider switching and Personal Lexicon CRUD UI.
-4. Verify real `yao → 耀` repeated-selection learning and restart persistence.
-5. Continue V0.3 mixed-token segmentation only after the V0.2 product surfaces are runtime-accepted.
+1. Install the final V0.2 hardening build and perform a short live sanity pass on learned phrase / initials lookup.
+2. Complete the remaining manual Mac E2E checks for Zhuyin / Pinyin / CIN base-provider switching and Shift-ASCII UI behavior.
+3. Treat V0.2 as feature-complete after those UI-only checks; no additional learning architecture work is required.
+4. Continue V0.3 mixed-token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens).
 
 ## V0.2 implementation status
 
@@ -162,6 +168,10 @@ initials, and mixed-Pinyin lookup without conflating ordinary composition with e
 - [x] commit-gate regressions for punctuation/raw-buffer pollution rejection
 - [x] toneless-Pinyin single-character selection preference + JSON persistence
 - [x] Hybrid/native Pinyin single-character candidate re-ranking
+- [x] threshold-time factory-reading validation before auto promotion
+- [x] legitimate factory multi-reading variants remain promotable
+- [x] exact-reading validation cache + factory-reload invalidation
+- [x] sequential single-character composition regression (`wei → 韋`, `hong → 宏` ×3 ⇒ `weihong / wh`)
 - [ ] broader V0.3 English/Chinese token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens)
 
 ## V0.1 phase checklist
@@ -356,17 +366,31 @@ nonexistent whole-phrase gram. Regression `IH531` deliberately makes the top-1 a
 segments `過來` and `一下`. Full LibVanguard tests pass, SettingsUI remains 17/17 PASS, LXMgrTests are
 27/27 PASS, and `make debug` passes.
 
+Final V0.2 learning-quality hardening validates readings only when an observation actually reaches the
+promotion threshold. If the factory has an exact whole-phrase entry, the observed reading chain must be
+one of the factory-supported chains; otherwise the pending observation is discarded and never promoted.
+If the factory has no whole-phrase entry, the user-composed reading remains authoritative, preserving new
+name / phrase learning. Exact-reading chains are cached only on this low-frequency path and the cache is
+cleared on every factory dictionary reload. Production regression `LXMgr 036` confirms that the shipped
+factory legitimately supports all four `什麼` variants, including `ㄕㄜˊ ㄇㄛ˙`, while an invented
+unsupported reading is rejected at the third observation and the pending record is removed. A dedicated
+cache reload regression confirms no stale reading decision survives a factory replacement. Regression
+`IH532` executes the real user flow `wei → 韋`, `hong → 宏`, Enter, repeated three times; the phrase is
+promoted as `韋宏` with `weihong / wh`, and both lookup paths resolve immediately. The V0.2 focused final
+acceptance gate passes, full LibVanguard tests pass, SettingsUI remains 17/17 PASS, LXMgrTests are 28/28
+PASS, and `make debug` passes.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: 69122782
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow; exact-commit composition phrase learning with independent pending persistence; bounded N-best full-Pinyin composition fallback
-Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 27/27 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: 80a2774a plus final V0.2 learning-quality hardening working tree (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow; exact-commit composition phrase learning with independent pending persistence; bounded N-best full-Pinyin composition fallback; threshold-time factory-reading promotion validation; sequential character-to-phrase acceptance
+Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 28/28 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
 Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin, composition-learning, and composed-Pinyin N-best builds installed with strict codesign verification; local private `過來一下 → guolaiyixia / glyx` entry seeded for immediate live acceptance; existing private Personal/CIN data preserved
-Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and final live composed-Pinyin / composition-learning persistence acceptance remain
-Next unfinished item: verify live `guolaiyixia → 過來一下` and `glyx → 過來一下`, then verify a newly composed phrase promotes after three exact commits and survives restart
+Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; only a few UI-only Mac acceptance checks remain (provider switching / Shift-ASCII), not core learning architecture
+Next unfinished item: install the hardening build, run the short UI sanity checks, then start V0.3 mixed-token segmentation
 ```

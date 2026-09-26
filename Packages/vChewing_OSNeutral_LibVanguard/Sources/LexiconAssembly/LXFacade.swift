@@ -434,6 +434,16 @@ extension LXAssembly {
       case let .pending(count):
         return .pending(count: count)
       case let .thresholdReached(observation):
+        if Self.factoryExactReadingStatus(
+          phrase: observation.phrase,
+          readings: observation.readings
+        ) == .unsupported {
+          _ = lxPersonalLexiconPromotion.remove(
+            phrase: observation.phrase,
+            readings: observation.readings
+          )
+          return .rejectedUnsupportedFactoryReading
+        }
         let entry = PersonalLexiconEntry(
           phrase: observation.phrase,
           readings: observation.readings,
@@ -477,6 +487,16 @@ extension LXAssembly {
       case let .pending(count):
         return .pending(count: count)
       case let .thresholdReached(observation):
+        if Self.factoryExactReadingStatus(
+          phrase: observation.phrase,
+          readings: observation.readings
+        ) == .unsupported {
+          _ = lxCompositionPhraseLearning.remove(
+            phrase: observation.phrase,
+            readings: observation.readings
+          )
+          return .rejectedUnsupportedFactoryReading
+        }
         let entry = PersonalLexiconEntry(
           phrase: observation.phrase,
           readings: observation.readings,
@@ -911,9 +931,14 @@ extension LXAssembly {
     /// 故只能經由世代計數器（而非直接 `removeAll`）令各實例的舊快取自動作廢。
     static var cassetteGeneration: Int = 0
 
+    /// 低頻 Personal / promotion 管理路徑使用的整詞 exact-reading cache。
+    /// factoryTrie 一旦重載即清空，避免舊字典的讀音判斷殘留。
+    static var factoryExactReadingChainsCache: [String: [[String]]] = [:]
+
     static var factoryTrie: VanguardTrie.TextMapTrie? {
       didSet {
         factoryGeneration &+= 1
+        factoryExactReadingChainsCache.removeAll()
       }
     }
 
