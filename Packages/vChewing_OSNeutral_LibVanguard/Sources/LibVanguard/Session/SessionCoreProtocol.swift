@@ -92,11 +92,13 @@ extension SessionCoreProtocol {
     case .ofDeactivated: break // macOS 不再處理 deactivated 狀態。
     case .ofAbortion, .ofCommitting, .ofEmpty:
       if next.type == .ofCommitting {
+        inputHandler?.observeMixTypeCompositionPhraseCommit(textToCommit: next.textToCommit)
         commit(text: next.textToCommit)
       } else if next.type == .ofEmpty, previous.hasComposition, let inputHandler {
         let textToCommit = inputHandler.committableDisplayText(
           sansReading: previous.type != .ofInputting
         )
+        inputHandler.observeMixTypeCompositionPhraseCommit(textToCommit: textToCommit)
         commit(text: textToCommit)
       }
       inputHandler?.clear()

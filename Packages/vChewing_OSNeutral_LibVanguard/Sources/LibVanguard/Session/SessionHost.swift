@@ -45,6 +45,8 @@ public final class SessionHost {
   public var savePersonalLexiconData: (_ isCHS: Bool) -> () = { _ in }
   /// 儲存 MixType Auto Promotion pending observations。參數為當前 LXFacade 是否為簡體模式。
   public var savePersonalLexiconPromotionData: (_ isCHS: Bool) -> () = { _ in }
+  /// 儲存 MixType 組句短語學習 pending observations。
+  public var saveCompositionPhraseLearningData: (_ isCHS: Bool) -> () = { _ in }
   /// 儲存 MixType 無聲調拼音單字偏好。
   public var saveSingleCharacterPreferenceData: (_ isCHS: Bool) -> () = { _ in }
   /// 直接寫入使用者語彙。

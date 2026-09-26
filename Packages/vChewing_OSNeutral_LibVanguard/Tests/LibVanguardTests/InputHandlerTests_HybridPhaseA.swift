@@ -1291,6 +1291,130 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(initialsOffer.source == .personalInitials)
   }
 
+  @Test
+  func test_IH529_CompositionPhraseCommitLearnsAndPromotesJiuHaoLe() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let oldAutoPromotionEnabled = testHandler.prefs.mixTypeAutoPromotionEnabled
+    let oldThreshold = testHandler.prefs.mixTypeAutoPromotionThreshold
+    let oldEnglishIntent = testHandler.prefs.mixTypeEnglishIntentEnabled
+    var pendingSaveCount = 0
+    var personalSaveCount = 0
+    SessionHost.shared.saveCompositionPhraseLearningData = { _ in pendingSaveCount += 1 }
+    SessionHost.shared.savePersonalLexiconData = { _ in personalSaveCount += 1 }
+
+    let readings = ["ㄐㄧㄡˋ", "ㄏㄠˇ", "ㄌㄜ˙"]
+    let targetPhrase = "就好了"
+    let grams = [
+      Homa.Gram(keyArray: ["ㄐㄧㄡˋ"], value: "就", score: 10),
+      Homa.Gram(keyArray: ["ㄏㄠˇ"], value: "好", score: 10),
+      Homa.Gram(keyArray: ["ㄌㄜ˙"], value: "了", score: 10),
+      Homa.Gram(keyArray: readings, value: targetPhrase, score: 50),
+    ]
+
+    defer {
+      testHandler.prefs.mixTypeAutoPromotionEnabled = oldAutoPromotionEnabled
+      testHandler.prefs.mixTypeAutoPromotionThreshold = oldThreshold
+      testHandler.prefs.mixTypeEnglishIntentEnabled = oldEnglishIntent
+      SessionHost.shared.saveCompositionPhraseLearningData = { _ in }
+      SessionHost.shared.savePersonalLexiconData = { _ in }
+      testHandler.currentLM.replacePersonalLexiconEntries([])
+      testHandler.currentLM.replaceCompositionPhraseLearningObservations([])
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    testHandler.currentLM.replacePersonalLexiconEntries([])
+    testHandler.currentLM.replaceCompositionPhraseLearningObservations([])
+    testHandler.currentLM.clearTemporaryData(isFiltering: false)
+    grams.forEach { testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false) }
+    testHandler.prefs.mixTypeAutoPromotionEnabled = true
+    testHandler.prefs.mixTypeAutoPromotionThreshold = 3
+    testHandler.prefs.mixTypeEnglishIntentEnabled = true
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    for expectedCount in 1 ... 3 {
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+      try testHandler.assembler.insertKeys(readings.map { Homa.PossibleKey.singleKey($0) })
+      #expect(testHandler.assembler.actualKeys == readings)
+      #expect(testHandler.assembler.assembledSentence.values.joined() == targetPhrase)
+
+      testSession.switchState(.ofCommitting(textToCommit: targetPhrase))
+
+      if expectedCount < 3 {
+        #expect(testHandler.currentLM.personalLexiconEntries.isEmpty)
+        #expect(
+          testHandler.currentLM.compositionPhraseLearningObservations.first?.occurrenceCount == expectedCount
+        )
+      }
+    }
+
+    let promoted = try #require(
+      testHandler.currentLM.personalLexiconEntries.first(where: { $0.phrase == targetPhrase })
+    )
+    #expect(promoted.fullPinyinKey == "jiuhaole")
+    #expect(promoted.initialsKey == "jhl")
+    #expect(promoted.selectionCount == 3)
+    #expect(testHandler.currentLM.compositionPhraseLearningObservations.isEmpty)
+    #expect(pendingSaveCount == 3)
+    #expect(personalSaveCount == 1)
+
+    let initialsOffer = try #require(
+      testHandler.hybridCandidateOffers(for: "jhl").first(where: { $0.candidate.value == targetPhrase })
+    )
+    #expect(initialsOffer.source == .personalInitials)
+    let mixedOffer = try #require(
+      testHandler.hybridCandidateOffers(for: "jhaole").first(where: { $0.candidate.value == targetPhrase })
+    )
+    #expect(mixedOffer.source == .personalMixedPinyin)
+  }
+
+  @Test
+  func test_IH530_CompositionPhraseLearningRejectsMixedOrNonExactCommit() throws {
+    guard let testHandler else {
+      Issue.record("Test handler is nil.")
+      return
+    }
+
+    let oldAutoPromotionEnabled = testHandler.prefs.mixTypeAutoPromotionEnabled
+    let readings = ["ㄐㄧㄡˋ", "ㄏㄠˇ", "ㄌㄜ˙"]
+    let grams = [
+      Homa.Gram(keyArray: ["ㄐㄧㄡˋ"], value: "就", score: 10),
+      Homa.Gram(keyArray: ["ㄏㄠˇ"], value: "好", score: 10),
+      Homa.Gram(keyArray: ["ㄌㄜ˙"], value: "了", score: 10),
+      Homa.Gram(keyArray: readings, value: "就好了", score: 50),
+    ]
+    defer {
+      testHandler.prefs.mixTypeAutoPromotionEnabled = oldAutoPromotionEnabled
+      testHandler.currentLM.replaceCompositionPhraseLearningObservations([])
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+    }
+
+    testHandler.currentLM.replaceCompositionPhraseLearningObservations([])
+    testHandler.currentLM.clearTemporaryData(isFiltering: false)
+    grams.forEach { testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false) }
+    testHandler.prefs.mixTypeAutoPromotionEnabled = true
+    try testHandler.assembler.insertKeys(readings.map { Homa.PossibleKey.singleKey($0) })
+    #expect(testHandler.assembler.assembledSentence.values.joined() == "就好了")
+
+    testHandler.observeMixTypeCompositionPhraseCommit(textToCommit: "就好了!")
+    #expect(testHandler.currentLM.compositionPhraseLearningObservations.isEmpty)
+
+    testHandler.calligrapher.append("x")
+    testHandler.observeMixTypeCompositionPhraseCommit(textToCommit: "就好了")
+    #expect(testHandler.currentLM.compositionPhraseLearningObservations.isEmpty)
+  }
+
   private func verifyNativePhoneticPersonalLexicon(
     parser: KeyboardParser,
     expectedProvider: Shared.MixTypeBaseInputProvider

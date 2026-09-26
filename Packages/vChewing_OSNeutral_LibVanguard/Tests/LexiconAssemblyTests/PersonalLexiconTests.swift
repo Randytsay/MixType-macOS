@@ -248,6 +248,57 @@ struct PersonalLexiconTests {
   }
 
   @Test
+  func testCompositionPhraseLearningStorePromotesOnlyExactShortChinesePhrase() throws {
+    let store = LXAssembly.CompositionPhraseLearningStore()
+    let readings = ["ㄐㄧㄡˋ", "ㄏㄠˇ", "ㄌㄜ˙"]
+    let t1 = Date(timeIntervalSince1970: 1_700_000_000)
+    let t2 = Date(timeIntervalSince1970: 1_700_000_100)
+    let t3 = Date(timeIntervalSince1970: 1_700_000_200)
+
+    #expect(store.observe(phrase: "就好了", readings: readings, threshold: 3, now: t1) == .pending(count: 1))
+    #expect(store.observe(phrase: "就好了", readings: readings, threshold: 3, now: t2) == .pending(count: 2))
+    let third = store.observe(phrase: "就好了", readings: readings, threshold: 3, now: t3)
+    guard case let .thresholdReached(observation) = third else {
+      Issue.record("Third committed occurrence must reach composition-learning threshold.")
+      return
+    }
+    #expect(observation.occurrenceCount == 3)
+    #expect(observation.firstSeenAt == t1)
+    #expect(observation.lastSeenAt == t3)
+
+    #expect(store.observe(phrase: "就", readings: ["ㄐㄧㄡˋ"], threshold: 3) == .ignored)
+    #expect(store.observe(phrase: "就好了！", readings: readings, threshold: 3) == .ignored)
+    #expect(store.observe(phrase: "我今天下午去公司", readings: Array(repeating: "ㄨㄛˇ", count: 7), threshold: 3) == .ignored)
+  }
+
+  @Test
+  func testCompositionPhraseLearningJSONRoundTripAndFacadePromotion() throws {
+    let store = LXAssembly.CompositionPhraseLearningStore()
+    let readings = ["ㄐㄧㄡˋ", "ㄏㄠˇ", "ㄌㄜ˙"]
+    _ = store.observe(phrase: "就好了", readings: readings, threshold: 3)
+    let data = try store.encode()
+    let restored = LXAssembly.CompositionPhraseLearningStore()
+    try restored.load(data: data)
+    #expect(restored.observation(phrase: "就好了", readings: readings)?.occurrenceCount == 1)
+
+    let facade = LXAssembly.LXFacade(isCHS: false)
+    facade.replacePersonalLexiconEntries([])
+    facade.replaceCompositionPhraseLearningObservations([])
+    #expect(facade.observeCompositionPhrasePromotion(phrase: "就好了", readings: readings, threshold: 3) == .pending(count: 1))
+    #expect(facade.observeCompositionPhrasePromotion(phrase: "就好了", readings: readings, threshold: 3) == .pending(count: 2))
+    let outcome = facade.observeCompositionPhrasePromotion(phrase: "就好了", readings: readings, threshold: 3)
+    guard case let .promoted(entry) = outcome else {
+      Issue.record("Third composition occurrence must promote into Personal Lexicon.")
+      return
+    }
+    #expect(entry.phrase == "就好了")
+    #expect(entry.fullPinyinKey == "jiuhaole")
+    #expect(entry.initialsKey == "jhl")
+    #expect(entry.selectionCount == 3)
+    #expect(facade.compositionPhraseLearningObservations.isEmpty)
+  }
+
+  @Test
   func testPersonalLexiconFacadePromotesExactlyOnceUsingActualReadings() throws {
     let facade = LXAssembly.LXFacade()
     let readings = ["ㄘㄞˋ", "ㄧㄠˋ", "ㄨㄣˊ"]

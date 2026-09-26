@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.2 Batch B complete in code — Auto Promotion + English intent + single-character Pinyin preference**
+**V0.2 Batch B complete in code — Auto Promotion + composition phrase learning + Pinyin preference**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -27,6 +27,10 @@ Batch B adds persistent explicit-selection observations, threshold-based automat
 Personal Lexicon, user-visible learning controls, and a conservative English-intent filter that suppresses
 only factory-abbreviation-only collisions for English-shaped raw tokens while preserving CIN, Personal,
 and full-Pinyin matches.
+Composition phrase learning now adds a second, independent learning signal: exact committed Chinese
+compositions of 2...6 characters accumulate in their own pending store and promote into the same Personal
+Lexicon after the configured threshold. This makes frequently composed phrases available through full,
+initials, and mixed-Pinyin lookup without conflating ordinary composition with explicit candidate selection.
 
 ## Repository state
 
@@ -72,6 +76,10 @@ and full-Pinyin matches.
 - Personal Lexicon mixed-Pinyin prefix matching: query-time per-syllable prefix match without alias expansion (`jhaole → 就好了`, `jhao → 就好`): ✅
 - mixed-prefix Personal candidates remain visible even when conservative English-intent detection considers the raw token English-shaped: ✅
 - existing factory mixed-abbreviation selections still feed Auto Promotion; after threshold promotion, the generated initials key is immediately available (`nliu → 能留` ×3 ⇒ `nl → 能留`): ✅
+- composition phrase learning pending store + separate `composition-phrase-pending-cht/chs.json` persistence: ✅
+- exact committed Chinese compositions of 2...6 characters learn by `phrase + actual readings`, using the existing Auto Promotion threshold (default 3): ✅
+- composition learning rejects single characters, punctuation/ASCII mixtures, >6-character phrases, unmatched commit text, pending raw buffers, and reading-count mismatches: ✅
+- composition-learning promotion feeds the same Personal Lexicon, so learned `就好了` immediately supports `jiuhaole / jhaole / jhl`: ✅
 - toneless Pinyin single-character preference store (`single-character-preferences-cht/chs.json`): ✅
 - explicit single-character Pinyin selections learn by tone-insensitive Zhuyin bucket (for example `ㄧㄠˋ → ㄧㄠ`) and persist across restarts: ✅
 - single-character candidate order starts changing only after 3 explicit selections; the first 1–2 selections are recorded but do not reorder, reducing accidental-learning risk: ✅
@@ -110,8 +118,8 @@ and full-Pinyin matches.
 
 ## Required next steps
 
-1. Install Batch B and verify Auto Promotion controls, `space` English preference, and the existing `tdny` Personal/factory coexistence on the Mac.
-2. Verify a real three-selection promotion workflow and restart persistence of pending counts / promoted entries.
+1. Install the composition-learning build and verify a real 2...6-character phrase reaches Personal Lexicon after three exact committed occurrences.
+2. Verify restart persistence of `composition-phrase-pending-cht.json` before threshold and Personal Lexicon after promotion.
 3. Complete Mac E2E for Zhuyin / Pinyin / CIN base-provider switching and Personal Lexicon CRUD UI.
 4. Verify real `yao → 耀` repeated-selection learning and restart persistence.
 5. Continue V0.3 mixed-token segmentation only after the V0.2 product surfaces are runtime-accepted.
@@ -147,6 +155,9 @@ and full-Pinyin matches.
 - [x] conservative English-intent filtering for abbreviation-only collisions
 - [x] Personal Lexicon mixed-Pinyin prefix matching without persisted alias expansion
 - [x] mixed-prefix → Auto Promotion → full initials acceptance regression
+- [x] composition phrase learning from exact committed 2...6-character Chinese compositions
+- [x] independent composition pending persistence and threshold promotion into Personal Lexicon
+- [x] commit-gate regressions for punctuation/raw-buffer pollution rejection
 - [x] toneless-Pinyin single-character selection preference + JSON persistence
 - [x] Hybrid/native Pinyin single-character candidate re-ranking
 - [ ] broader V0.3 English/Chinese token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens)
@@ -314,17 +325,33 @@ locks the learning bridge: repeated explicit selection of a factory mixed-abbrev
 it at the normal threshold, after which its all-initials key resolves through Personal Lexicon. Full
 LibVanguard tests pass, SettingsUI remains 17/17 PASS, LXMgrTests are 25/25 PASS, and `make debug` passes.
 
+Composition phrase learning adds a separate pending lifecycle for phrases formed through ordinary Homa
+composition rather than explicit candidate selection. The Session commit path observes the assembler
+immediately before it is cleared, so learning uses the exact committed Chinese text together with the
+actual Zhuyin readings that produced it; it never reverse-guesses pronunciation from text. Only pure CJK
+compositions of 2...6 characters are eligible, the committed string must exactly equal the assembled
+Chinese phrase, every character must have one aligned reading, and the raw Pinyin/CIN/mixed-ASCII buffers
+must already be empty. Observations are stored independently in
+`composition-phrase-pending-cht/chs.json`, keyed by phrase + readings, and use the existing Auto Promotion
+threshold (default 3). Candidate-selection observations and composition observations therefore never
+cross-count. At threshold the phrase is promoted into the same Personal Lexicon with generated full-Pinyin
+and initials keys; mixed-prefix lookup is then available automatically. Regressions `IH529` / `IH530`
+exercise the real Session commit hook: three exact commits of `就好了` promote it to `jiuhaole / jhl`,
+after which `jhl` and `jhaole` resolve it; commits containing extra punctuation or a pending raw buffer do
+not count. The dedicated store JSON round-trip and LXMgr save/reload pass. Full LibVanguard tests pass,
+SettingsUI remains 17/17 PASS, LXMgrTests are 26/26 PASS, and `make debug` passes.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: 1c5351c2
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow
-Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 25/25 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: d1766475 plus composition phrase learning working tree (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow; exact-commit composition phrase learning with independent pending persistence
+Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 26/26 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin build installed; local private entries `就好 / 就好了` seeded for live acceptance
-Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and final live candidate-window verification for `jhao / jhaole / jhl` still need user acceptance
-Next unfinished item: verify real `jhao / jhaole / jhl` candidate behavior in the installed IME, then continue V0.3 token segmentation after V0.2 acceptance
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin build installed; composition-learning build pending installation
+Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and final real-Mac composition-learning persistence acceptance remain
+Next unfinished item: commit/push/install composition phrase learning, verify a new phrase promotes after three exact commits and persists across restart, then continue V0.3 after V0.2 acceptance
 ```

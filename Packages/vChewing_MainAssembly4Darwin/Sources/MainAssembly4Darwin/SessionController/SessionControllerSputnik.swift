@@ -114,6 +114,7 @@ extension SessionControllerSputnik {
       session.inputControllerAssignedAddr = ctlAddr
       LXMgr.ensurePersonalLexiconLoaded(mode: session.inputMode)
       LXMgr.ensurePersonalLexiconPromotionLoaded(mode: session.inputMode)
+      LXMgr.ensureCompositionPhraseLearningLoaded(mode: session.inputMode)
       LXMgr.ensureSingleCharacterPreferenceLoaded(mode: session.inputMode)
       session.performServerActivation()
     }

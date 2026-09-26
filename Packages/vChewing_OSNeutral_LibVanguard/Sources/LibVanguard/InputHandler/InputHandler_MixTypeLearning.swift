@@ -5,6 +5,43 @@
 import Foundation
 
 extension InputHandlerProtocol {
+  /// MixType 的「組句短語」學習入口。
+  ///
+  /// 只接受 assembler 已完成、且實際提交文字完全等於組句中文內容的情況。
+  /// 這個 gate 刻意排除：單字、ASCII/符號混合、超過 6 字、讀音數量不對齊、
+  /// 尚有 raw buffer 的提交。達門檻後升級到既有 Personal Lexicon，後續自然獲得
+  /// full Pinyin / initials / mixed-prefix 查詢能力。
+  public func observeMixTypeCompositionPhraseCommit(textToCommit: String) {
+    guard prefs.mixTypeAutoPromotionEnabled else { return }
+    guard calligrapher.isEmpty, mixedAlphanumericalBuffer.isEmpty else { return }
+    guard composer.isEmpty else { return }
+
+    let phrase = assembler.assembledSentence.values.joined()
+    let readings = assembler.actualKeys
+    guard textToCommit == phrase else { return }
+    guard LXAssembly.CompositionPhraseLearningStore.isValidPhraseAndReadings(
+      phrase: phrase,
+      readings: readings
+    ) else {
+      return
+    }
+
+    switch currentLM.observeCompositionPhrasePromotion(
+      phrase: phrase,
+      readings: readings,
+      threshold: prefs.mixTypeAutoPromotionThreshold
+    ) {
+    case .ignored, .alreadyPersonal:
+      return
+    case .pending:
+      SessionHost.shared.saveCompositionPhraseLearningData(currentLM.isCHS)
+    case .promoted:
+      // 先落長期 Personal，再落「已移除 observation」的 composition pending 檔。
+      SessionHost.shared.savePersonalLexiconData(currentLM.isCHS)
+      SessionHost.shared.saveCompositionPhraseLearningData(currentLM.isCHS)
+    }
+  }
+
   /// MixType 的「明確選字」學習入口。
   ///
   /// - 已是 Personal Lexicon：只更新 selectionCount / lastUsedAt。

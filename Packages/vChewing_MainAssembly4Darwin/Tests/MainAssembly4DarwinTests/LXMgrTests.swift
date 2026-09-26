@@ -619,6 +619,37 @@ final class LXMgrTests {
     #expect(mode.lexicon.singleCharacterPreference(reading: "ㄧㄠ", value: "耀")?.selectionCount == 2)
   }
 
+  @Test
+  func test034_LXMgr_CompositionPhraseLearningSaveAndReload() throws {
+    let mode = Shared.InputMode.imeModeCHT
+    let url = LXMgr.compositionPhraseLearningDataURL(mode: mode)
+    defer {
+      mode.lexicon.replaceCompositionPhraseLearningObservations([])
+      try? FileManager.default.removeItem(at: url)
+    }
+
+    mode.lexicon.replaceCompositionPhraseLearningObservations([])
+    #expect(
+      mode.lexicon.observeCompositionPhrasePromotion(
+        phrase: "就好了",
+        readings: ["ㄐㄧㄡˋ", "ㄏㄠˇ", "ㄌㄜ˙"],
+        threshold: 3,
+        now: Date(timeIntervalSince1970: 1_700_000_000)
+      ) == .pending(count: 1)
+    )
+    try LXMgr.saveCompositionPhraseLearningData(mode: mode)
+    #expect(FileManager.default.isReadableFile(atPath: url.path))
+
+    mode.lexicon.replaceCompositionPhraseLearningObservations([])
+    #expect(mode.lexicon.compositionPhraseLearningObservations.isEmpty)
+    LXMgr.loadCompositionPhraseLearningData(mode: mode)
+
+    let restored = try #require(mode.lexicon.compositionPhraseLearningObservations.first)
+    #expect(restored.phrase == "就好了")
+    #expect(restored.readings == ["ㄐㄧㄡˋ", "ㄏㄠˇ", "ㄌㄜ˙"])
+    #expect(restored.occurrenceCount == 1)
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test

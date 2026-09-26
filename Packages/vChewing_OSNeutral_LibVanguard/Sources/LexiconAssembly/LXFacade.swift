@@ -315,6 +315,10 @@ extension LXAssembly {
       lxPersonalLexiconPromotion.observations
     }
 
+    public var compositionPhraseLearningObservations: [CompositionPhraseObservation] {
+      lxCompositionPhraseLearning.observations
+    }
+
     public var singleCharacterPreferenceEntries: [SingleCharacterPreferenceEntry] {
       lxSingleCharacterPreference.entries
     }
@@ -362,6 +366,20 @@ extension LXAssembly {
 
     public func exportPersonalLexiconPromotionData() throws -> Data {
       try lxPersonalLexiconPromotion.encode()
+    }
+
+    public func replaceCompositionPhraseLearningObservations(
+      _ observations: [CompositionPhraseObservation]
+    ) {
+      lxCompositionPhraseLearning.replaceObservations(observations)
+    }
+
+    public func loadCompositionPhraseLearningData(_ data: Data) throws {
+      try lxCompositionPhraseLearning.load(data: data)
+    }
+
+    public func exportCompositionPhraseLearningData() throws -> Data {
+      try lxCompositionPhraseLearning.encode()
     }
 
     public func replaceSingleCharacterPreferenceEntries(_ entries: [SingleCharacterPreferenceEntry]) {
@@ -431,6 +449,52 @@ extension LXAssembly {
         )
         guard lxPersonalLexicon.upsert(entry) else { return .ignored }
         _ = lxPersonalLexiconPromotion.remove(phrase: observation.phrase, readings: observation.readings)
+        return .promoted(entry)
+      }
+    }
+
+    /// 組句提交達門檻後提升為長期 Personal Lexicon。
+    /// 與明確選字 promotion 使用不同 pending store，避免兩種訊號互相累加。
+    public func observeCompositionPhrasePromotion(
+      phrase: String,
+      readings: [String],
+      threshold: Int,
+      now: Date = Date()
+    ) -> PersonalLexiconAutoPromotionOutcome {
+      if lxPersonalLexicon.entries.contains(where: { $0.phrase == phrase && $0.readings == readings }) {
+        return .alreadyPersonal
+      }
+      guard let keys = PersonalLexiconKeyGenerator.generate(readings: readings) else { return .ignored }
+
+      switch lxCompositionPhraseLearning.observe(
+        phrase: phrase,
+        readings: readings,
+        threshold: threshold,
+        now: now
+      ) {
+      case .ignored:
+        return .ignored
+      case let .pending(count):
+        return .pending(count: count)
+      case let .thresholdReached(observation):
+        let entry = PersonalLexiconEntry(
+          phrase: observation.phrase,
+          readings: observation.readings,
+          pinyinTokens: keys.pinyinTokens,
+          fullPinyinKey: keys.fullPinyinKey,
+          initialsKey: keys.initialsKey,
+          source: .autoPromoted,
+          selectionCount: observation.occurrenceCount,
+          createdAt: observation.firstSeenAt,
+          updatedAt: now,
+          lastUsedAt: observation.lastSeenAt,
+          pinned: false
+        )
+        guard lxPersonalLexicon.upsert(entry) else { return .ignored }
+        _ = lxCompositionPhraseLearning.remove(
+          phrase: observation.phrase,
+          readings: observation.readings
+        )
         return .promoted(entry)
       }
     }
@@ -879,6 +943,7 @@ extension LXAssembly {
     var lxAssociates = LXAssociates()
     var lxPersonalLexicon = PersonalLexiconStore()
     var lxPersonalLexiconPromotion = PersonalLexiconPromotionStore()
+    var lxCompositionPhraseLearning = CompositionPhraseLearningStore()
     var lxSingleCharacterPreference = SingleCharacterPreferenceStore()
 
     /// 額外掛載的語言模組來源中樞（多來源掛載）。

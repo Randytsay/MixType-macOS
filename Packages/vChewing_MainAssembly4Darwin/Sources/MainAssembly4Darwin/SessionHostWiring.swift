@@ -39,6 +39,14 @@ extension SessionHost {
         vCLog("Personal Lexicon pending save failed after selection: \(error.localizedDescription)")
       }
     }
+    host.saveCompositionPhraseLearningData = { isCHS in
+      let mode: Shared.InputMode = isCHS ? .imeModeCHS : .imeModeCHT
+      do {
+        try LXMgr.saveCompositionPhraseLearningData(mode: mode)
+      } catch {
+        vCLog("Composition phrase pending save failed: \(error.localizedDescription)")
+      }
+    }
     host.saveSingleCharacterPreferenceData = { isCHS in
       let mode: Shared.InputMode = isCHS ? .imeModeCHS : .imeModeCHT
       do {

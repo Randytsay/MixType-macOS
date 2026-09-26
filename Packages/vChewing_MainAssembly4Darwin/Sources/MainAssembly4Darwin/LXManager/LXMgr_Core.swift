@@ -92,6 +92,7 @@ public final class LXMgr {
     Self.loadUserPhrasesData()
     Self.loadPersonalLexiconData()
     Self.loadPersonalLexiconPromotionData()
+    Self.loadCompositionPhraseLearningData()
     Self.loadSingleCharacterPreferenceData()
     // 就關聯詞語登記惰性載入器，會趁首次需要完成載入。
     LXAssembly.LXFacade.associatesLazyLoader = {
@@ -285,6 +286,42 @@ public final class LXMgr {
       withIntermediateDirectories: true
     )
     let data = try mode.lexicon.exportPersonalLexiconPromotionData()
+    try data.write(to: url, options: [.atomic])
+  }
+
+  /// 載入 MixType 組句短語學習 pending observations。錯誤時保留既有記憶體內容。
+  public static func loadCompositionPhraseLearningData(mode: Shared.InputMode? = nil) {
+    let targetModes = mode.map { [$0] } ?? Shared.InputMode.validCases
+    for targetMode in targetModes where targetMode != .imeModeNULL {
+      let url = compositionPhraseLearningDataURL(mode: targetMode)
+      guard FileManager.default.isReadableFile(atPath: url.path) else {
+        targetMode.lexicon.replaceCompositionPhraseLearningObservations([])
+        continue
+      }
+      do {
+        let data = try Data(contentsOf: url)
+        try targetMode.lexicon.loadCompositionPhraseLearningData(data)
+      } catch {
+        vCLog("Composition phrase pending load failed at \(url.path): \(error.localizedDescription)")
+      }
+    }
+  }
+
+  public static func ensureCompositionPhraseLearningLoaded(mode: Shared.InputMode) {
+    guard mode != .imeModeNULL, mode.lexicon.compositionPhraseLearningObservations.isEmpty else { return }
+    let url = compositionPhraseLearningDataURL(mode: mode)
+    guard FileManager.default.isReadableFile(atPath: url.path) else { return }
+    loadCompositionPhraseLearningData(mode: mode)
+  }
+
+  public static func saveCompositionPhraseLearningData(mode: Shared.InputMode) throws {
+    guard mode != .imeModeNULL else { return }
+    let url = compositionPhraseLearningDataURL(mode: mode)
+    try FileManager.default.createDirectory(
+      at: url.deletingLastPathComponent(),
+      withIntermediateDirectories: true
+    )
+    let data = try mode.lexicon.exportCompositionPhraseLearningData()
     try data.write(to: url, options: [.atomic])
   }
 

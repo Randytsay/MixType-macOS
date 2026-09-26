@@ -111,6 +111,17 @@ extension LXMgr {
       .appendingPathComponent("personal-lexicon-pending-\(suffix).json")
   }
 
+  /// MixType 組句短語學習 pending observation 的版本化 JSON 路徑。
+  public static func compositionPhraseLearningDataURL(
+    mode: Shared.InputMode,
+    basePath: String? = nil
+  ) -> URL {
+    let suffix = mode == .imeModeCHT ? "cht" : "chs"
+    let folderPath = basePath ?? dataFolderPath(isDefaultFolder: false)
+    return URL(fileURLWithPath: folderPath)
+      .appendingPathComponent("composition-phrase-pending-\(suffix).json")
+  }
+
   /// MixType 無聲調拼音單字偏好的版本化 JSON 路徑。
   public static func singleCharacterPreferenceDataURL(
     mode: Shared.InputMode,
