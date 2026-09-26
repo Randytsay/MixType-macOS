@@ -54,8 +54,8 @@ enum HybridCandidateSelectionOutcome {
 extension InputHandlerProtocol {
   /// 以 Hybrid raw-key buffer 唯讀生成候選。
   ///
-  /// 排序固定為 CIN exact → Personal full Pinyin → CIN quick → full Pinyin
-  /// → deterministic Pinyin+English+Pinyin mixed candidate → composed Pinyin sentence
+  /// 排序固定為 CIN exact → Personal full Pinyin → CIN quick
+  /// → deterministic mixed-token candidate → full Pinyin → composed Pinyin sentence
   /// → Personal mixed Pinyin prefix → Personal initials
   /// → abbreviated Pinyin；
   /// 相同輸出值只保留第一次出現者，因此 CIN 命中不會被拼音重新排序到後方。
@@ -101,8 +101,8 @@ extension InputHandlerProtocol {
     }
     groupedOffers.append(cassetteQuick)
 
-    groupedOffers.append(hybridFullPinyinOffers(for: rawKeys))
     groupedOffers.append(hybridMixedSegmentedOffers(for: rawKeys))
+    groupedOffers.append(hybridFullPinyinOffers(for: rawKeys))
     groupedOffers.append(hybridComposedPinyinOffers(for: rawKeys))
     let alreadyMatchedPersonalIDs = Set(personalMatches.map(\.entry.id))
     groupedOffers.append(hybridPersonalMixedPinyinOffers(
@@ -265,11 +265,12 @@ extension InputHandlerProtocol {
     }
   }
 
-  /// V0.3 Phase A Batch 4：單一 raw buffer 內的 Pinyin + English + Pinyin。
+  /// V0.3 Phase A Batch 4/5：單一 raw buffer 內的 Pinyin + English (+ Pinyin)。
   ///
-  /// 例如 `jintianmeetinggai` 會產生 `今天meeting改` 這類整體候選，但絕不
+  /// 例如 `jintianmeeting` / `jintianmeetinggai` 會產生
+  /// `今天meeting` / `今天meeting改` 這類整體候選，但絕不
   /// 在候選確認前自動提交任何中文字。中間 ASCII 必須通過較強的 English gate；
-  /// 兩側則只接受 full/composed Personal/factory Pinyin，避免 initials/abbreviation
+  /// 中文側則只接受 full/composed Personal/factory Pinyin，避免 initials/abbreviation
   /// 的弱匹配把普通拼音句誤切成中英混打。
   private func hybridMixedSegmentedOffers(for rawKeys: String) -> [HybridCandidateOffer] {
     guard prefs.mixTypeMixedTokenSegmentationEnabled,
@@ -285,8 +286,9 @@ extension InputHandlerProtocol {
     var results: [HybridCandidateOffer] = []
     var seenValues = Set<String>()
 
-    // prefix/suffix 至少各 2 字母；English 中段至少 4 字母。
-    for middleStartOffset in 2 ... max(2, count - 6) {
+    // 先處理 Pinyin + English + Pinyin；prefix/suffix 至少各 2 字母，
+    // English 中段至少 4 字母。
+    for middleStartOffset in stride(from: max(2, count - 6), through: 2, by: -1) {
       let minimumMiddleEnd = middleStartOffset + 4
       guard minimumMiddleEnd <= count - 2 else { continue }
       for middleEndOffset in minimumMiddleEnd ... (count - 2) {
@@ -329,10 +331,41 @@ extension InputHandlerProtocol {
       }
     }
 
-    return results.sorted { lhs, rhs in
-      if lhs.score != rhs.score { return lhs.score > rhs.score }
-      return lhs.candidate.value < rhs.candidate.value
-    }.prefix(12).map { $0 }
+    // 若尾端沒有可用的中文 Pinyin 切點，再處理 Pinyin + English 尾段，
+    // 例如 `jintianmeeting`。從最長 Pinyin prefix 往回掃，讓語意完整的
+    // `jintian + meeting` 優先於較短、較勉強的 `jinti + anmeeting`。
+    if count >= 8 {
+      for middleStartOffset in stride(from: count - 4, through: 2, by: -1) {
+        let prefixEnd = rawKeys.index(rawKeys.startIndex, offsetBy: middleStartOffset)
+        let prefixRaw = String(rawKeys[..<prefixEnd])
+        let middleRaw = String(rawKeys[prefixEnd...])
+        guard MixTypeEnglishIntent.isConfidentEnglishSegment(
+          middleRaw,
+          parser: composer.parser
+        ) else {
+          continue
+        }
+
+        let prefixOffers = hybridStrongPinyinSegmentOffers(for: prefixRaw).filter {
+          $0.candidate.keyArray.count >= 2 && $0.candidate.value.count >= 2
+        }
+        guard !prefixOffers.isEmpty else { continue }
+
+        for prefix in prefixOffers.prefix(4) {
+          let value = prefix.candidate.value + middleRaw
+          guard seenValues.insert(value).inserted else { continue }
+          results.append(
+            HybridCandidateOffer(
+              candidate: (keyArray: prefix.candidate.keyArray, value: value),
+              source: .mixedSegmented,
+              score: prefix.score
+            )
+          )
+        }
+      }
+    }
+
+    return Array(results.prefix(12))
   }
 
   private func hybridStrongPinyinSegmentOffers(for rawKeys: String) -> [HybridCandidateOffer] {

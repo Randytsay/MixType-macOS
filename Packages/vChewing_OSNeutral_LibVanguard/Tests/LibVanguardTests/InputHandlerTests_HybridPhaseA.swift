@@ -2021,6 +2021,87 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(!offers.contains { $0.candidate.value.contains("ming") })
   }
 
+  @Test
+  func test_IH543_ContinuousPinyinEnglishTailOffersWholeMixedCandidateFirst() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    [
+      Homa.Gram(keyArray: ["ㄐㄧㄣ"], value: "今", score: 20),
+      Homa.Gram(keyArray: ["ㄊㄧㄢ"], value: "天", score: 20),
+      Homa.Gram(keyArray: ["ㄐㄧㄣ", "ㄊㄧㄢ"], value: "今天", score: 200),
+    ].forEach {
+      testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false)
+    }
+
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("jintianmeeting")
+
+    #expect(testHandler.calligrapher == "jintianmeeting")
+    #expect(testSession.recentCommissions.isEmpty)
+    let mixedIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "今天meeting" })
+    )
+    #expect(mixedIndex == 0)
+
+    testSession.candidatePairSelectionConfirmed(at: mixedIndex)
+    #expect(testSession.recentCommissions == ["今天meeting"])
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.isEmpty)
+  }
+
+  @Test
+  func test_IH544_ContinuousPinyinTailDoesNotMisclassifyWeakEnglishSuffix() throws {
+    guard let testHandler else {
+      Issue.record("Test handler is nil.")
+      return
+    }
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    defer {
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+    }
+
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.insertTemporaryData(
+      unigram: Homa.Gram(keyArray: ["ㄐㄧㄣ", "ㄊㄧㄢ"], value: "今天", score: 200),
+      isFiltering: false
+    )
+
+    let offers = testHandler.hybridCandidateOffers(for: "jintianming")
+    #expect(!offers.contains { $0.source == .mixedSegmented })
+  }
+
   private func verifyProtectedMixedToken(_ token: String) throws {
     guard let testHandler, let testSession else {
       Issue.record("Test handler or session is nil.")

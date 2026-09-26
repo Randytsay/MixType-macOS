@@ -39,7 +39,8 @@ enum MixTypeEnglishIntent {
     let normalized = raw.lowercased()
     let chars = Array(normalized)
     if chars.count >= 3 {
-      for index in 0 ..< (chars.count - 2) where chars[index] == chars[index + 1] {
+      for index in 0 ..< (chars.count - 2)
+      where chars[index] == chars[index + 1] && "aeiou".contains(chars[index]) {
         return true
       }
     }
@@ -58,6 +59,9 @@ enum MixTypeEnglishIntent {
         break
       }
     }
+    // `ng...` 幾乎都是錯誤切在 Pinyin 音節中間的產物（例如
+    // `jintianmi + nggai`），不拿來做自動 English boundary。
+    guard !normalized.hasPrefix("ng") else { return false }
     return normalized.count - longestCoveredPrefixLength >= 2
   }
 }
