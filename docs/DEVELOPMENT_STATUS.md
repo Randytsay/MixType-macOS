@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.3 Phase A — deterministic mixed-token segmentation in the accepted Hybrid route**
+**V0.3 Phase A — acceptance complete**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -48,6 +48,13 @@ that have already been passed through to the client, allowing deterministic digi
 such as `3pm`, `20kW`, and `300RT` to finish as literal ASCII without re-committing the digits. The
 numeric context is cleared on normal commit/reset and explicit Chinese selection, while unrecognized
 digit-leading suffixes remain eligible for Chinese Pinyin candidates (for example `3nihao → 3你好`).
+Batch 4 adds deterministic continuous mixed candidate generation for raw streams that contain Pinyin,
+English, then Pinyin without a physical delimiter. The accepted real-client flow now includes
+`jintianmeeting → 今天meeting` and `jintianmeetinggai → 今天meeting改`, while weak-English
+false positives such as `jintianming` / `jintianminggai` remain guarded. Batch 5 closes the remaining
+CIN collision: punctuation that is part of a valid cassette code keeps CIN priority before mixed-token
+syntax protection. A dedicated public test cassette locks `s. → ？` without committing any private CIN
+data. Digit-leading time/unit tokens and e-mail/URL tokens retain their accepted ASCII precedence.
 
 ## Repository state
 
@@ -116,6 +123,10 @@ digit-leading suffixes remain eligible for Chinese Pinyin candidates (for exampl
 - digit-leading literal time/unit flow (`3pm`, `20kW`, `300RT`) without duplicated passthrough digits: ✅ focused regression
 - chained mixed-token flow (`今天meeting改3pm`) preserves Chinese / English / Chinese / numeric-unit boundaries: ✅ focused regression
 - digit-leading non-unit Pinyin remains selectable as Chinese (`3nihao → 3你好`): ✅ focused regression
+- continuous Pinyin→English candidate generation (`jintianmeeting → 今天meeting`): ✅ focused + installed-Mac validation
+- continuous Pinyin→English→Pinyin candidate generation (`jintianmeetinggai → 今天meeting改`): ✅ focused + installed-Mac validation
+- weak-English anti-split guards (`jintianming`, `jintianminggai`): ✅ focused regression
+- valid CIN punctuation-code precedence before mixed-token syntax (`s. → ？`): ✅ public fixture regression + installed-Mac validation
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -152,8 +163,9 @@ digit-leading suffixes remain eligible for Chinese Pinyin candidates (for exampl
 1. V0.2 final hardening build installation: ✅ complete with strict codesign verification and private runtime data preserved.
 2. Final Mac sanity: ✅ complete. Existing real-Mac evidence already covers Shift-ASCII / explicit English override; the final provider-state pass verified Zhuyin → Pinyin → CIN transitions against the installed input source and restored the original CIN/Hybrid preferences afterward.
 3. Learned runtime data sanity: ✅ `韋宏 = weihong / wh`, `過來一下 = guolaiyixia / glyx`, and the learned `耀` single-character preference remain persisted after the final hardening install.
-4. V0.2 is acceptance complete. V0.3 Phase A Batches 1–3 are committed/pushed; protected ASCII, adjacent English→Pinyin splitting, and digit-leading unit/time handling have all passed the full relevant validation gate.
-5. The Batch 3 Debug IME is installed after backing up the previous bundle; strict codesign passes, OpenVanilla remains present, and private CIN / Personal / learning file hashes are unchanged. The V0.3 feature flag remains default-off for runtime safety.
+4. V0.2 is acceptance complete. V0.3 Phase A Batches 1–5 are committed/pushed; protected ASCII, adjacent and continuous English/Pinyin segmentation, digit-leading unit/time handling, and CIN punctuation-code precedence have all passed the full relevant validation gate.
+5. The latest V0.3 Debug IME is installed after backing up the previous bundle; strict codesign passes, OpenVanilla remains present, and private CIN / Personal / learning file hashes are unchanged. The preference remains default-off in code, while the current acceptance Mac has explicitly enabled it for runtime validation.
+6. V0.3 Phase A real-client acceptance: ✅ `server2026`, `今天meeting改`, and private-CIN punctuation code `s. → ？` were verified on the installed IME.
 
 ## V0.2 implementation status
 
@@ -201,6 +213,9 @@ digit-leading suffixes remain eligible for Chinese Pinyin candidates (for exampl
 - [x] V0.3 adjacent Chinese → ASCII flow through existing assembler + Hybrid raw buffer
 - [x] V0.3 adjacent ASCII → Pinyin boundary split with explicit Chinese candidate confirmation
 - [x] V0.3 digit-leading unit/time tokens (`3pm`, `20kW`, `300RT`) as one deterministic mixed-token flow
+- [x] V0.3 continuous Pinyin → English and Pinyin → English → Pinyin candidate generation
+- [x] V0.3 real-client `jintianmeetinggai → 今天meeting改`
+- [x] V0.3 CIN punctuation-code priority over mixed-token syntax (`s. → ？`)
 
 ## V0.1 phase checklist
 
@@ -414,11 +429,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/mixed-token-v03
-Latest V0.3 commit: 0da1c909 (Batch 3 digit-leading mixed tokens)
-Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batch 1 protected ASCII tokens; Batch 2 adjacent English→Pinyin boundary split without automatic candidate selection; Batch 3 digit-leading literal time/unit handling with non-unit Pinyin escape hatch
-Tests: full LibVanguard package tests PASS (including IH533-IH540); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS with LXMgr 28/28 PASS; `make debug` PASS; `git diff --check` PASS.
+Latest V0.3 commit: 630ed0a0 (Batch 5 CIN punctuation-code precedence)
+Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batches 1–5 complete — protected ASCII tokens, adjacent English→Pinyin boundary split, digit-leading literal time/unit handling, continuous Pinyin→English(/→Pinyin) candidates, and CIN punctuation-code precedence
+Tests: full LibVanguard package tests PASS (including IH533-IH545); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS with LXMgr 28/28 PASS; `make debug` PASS; `git diff --check` PASS.
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; V0.3 Batch 3 Debug IME installed with strict codesign verification after bundle backup; OpenVanilla preserved; private Personal / explicit-promotion pending / composition pending / single-character preference / CIN file hashes unchanged
-Known issues: no V0.2 blocker. V0.3 Phase A code/test gate is green; the new mixed-token feature remains default-off, so real-client typing sanity for the new V0.3 examples is still an explicit activation/runtime acceptance step rather than an automatic behavior change. CoS Mac currently reports `CGPreflightPostEventAccess() == false`, so it cannot inject native keyboard events into TextEdit for that final real-client pass without macOS Accessibility authorization; no TCC bypass is attempted.
-Next unfinished item: perform the short real-client V0.3 Phase A sanity with the feature flag explicitly enabled, then decide whether to graduate the flag or continue to the next V0.3 acceptance batch.
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; `server2026` PASS; `jintianmeetinggai → 今天meeting改` PASS; private-CIN `s. → ？` PASS; latest V0.3 Debug IME installed with strict codesign verification after bundle backup; OpenVanilla preserved; private Personal / explicit-promotion pending / composition pending / single-character preference / CIN file hashes unchanged
+Known issues: no blocker in the accepted V0.1/V0.2/V0.3 Phase A scope. The mixed-token preference is still default-off in code for rollout safety; it is explicitly enabled on the current acceptance Mac. CoS Mac still lacks Accessibility keyboard-event injection, but the required Phase A real-client checks were completed manually.
+Next unfinished item: V0.3 Phase A is acceptance complete. Any further work is a new V0.3 phase / rollout decision rather than unfinished Phase A implementation.
 ```
