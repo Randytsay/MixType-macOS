@@ -650,6 +650,30 @@ final class LXMgrTests {
     #expect(restored.occurrenceCount == 1)
   }
 
+  @Test
+  func test035_LXMgr_ProductionFactoryContainsGuoLaiYiXiaSegments() throws {
+    defer { LXAssembly.LXFacade.disconnectFactoryDictionary() }
+    let path = try #require(LXMgr.getCoreDictionaryDBPath(factory: true))
+    LXMgr.connectCoreDB(dbPath: path)
+
+    let mode = Shared.InputMode.imeModeCHT
+    let guoLai = mode.lexicon.lxQuerier.hybridPhoneticGrams(for: [
+      .singleKey("ㄍㄨㄛˋ"),
+      .singleKey("ㄌㄞˊ"),
+    ])
+    #expect(guoLai.contains { $0.isUnigram && $0.current == "過來" })
+
+    let yiXiaTone1 = mode.lexicon.lxQuerier.hybridPhoneticGrams(for: [
+      .singleKey("ㄧ"),
+      .singleKey("ㄒㄧㄚˋ"),
+    ])
+    let yiXiaTone2 = mode.lexicon.lxQuerier.hybridPhoneticGrams(for: [
+      .singleKey("ㄧˊ"),
+      .singleKey("ㄒㄧㄚˋ"),
+    ])
+    #expect((yiXiaTone1 + yiXiaTone2).contains { $0.isUnigram && $0.current == "一下" })
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test

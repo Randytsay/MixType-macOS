@@ -1415,6 +1415,76 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testHandler.currentLM.compositionPhraseLearningObservations.isEmpty)
   }
 
+  @Test
+  func test_IH531_HybridFullPinyinCanComposePhraseFromExistingFactorySegments() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let oldEnglishIntent = testHandler.prefs.mixTypeEnglishIntentEnabled
+    defer {
+      testHandler.prefs.mixTypeEnglishIntentEnabled = oldEnglishIntent
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    testHandler.currentLM.clearTemporaryData(isFiltering: false)
+    [
+      Homa.Gram(keyArray: ["ㄍㄨㄛˋ", "ㄌㄞˊ"], value: "過來", score: 20),
+      Homa.Gram(keyArray: ["ㄧ", "ㄒㄧㄚˋ"], value: "一下", score: 20),
+      Homa.Gram(keyArray: ["ㄧˊ", "ㄒㄧㄚˋ"], value: "一下", score: 19),
+      // 刻意放一個更高分的無聲調歧義結果，確認 composed provider 不是只留 top-1。
+      Homa.Gram(keyArray: ["ㄧˇ", "ㄒㄧㄚˋ"], value: "以下", score: 25),
+      Homa.Gram(keyArray: ["ㄍㄨㄛˋ"], value: "過", score: 5),
+      Homa.Gram(keyArray: ["ㄌㄞˊ"], value: "來", score: 5),
+      Homa.Gram(keyArray: ["ㄧ"], value: "一", score: 5),
+      Homa.Gram(keyArray: ["ㄒㄧㄚˋ"], value: "下", score: 5),
+    ].forEach { testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false) }
+
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.mixTypeEnglishIntentEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+    testHandler.clear()
+
+    let topOneScratch = Homa.Assembler(
+      gramQuerier: testHandler.assembler.gramQuerier,
+      gramAvailabilityChecker: testHandler.assembler.gramAvailabilityChecker
+    )
+    func allTones(_ toneless: String) -> Homa.PossibleKey {
+      .multipleKeys(Tekkon.allowedIntonations.map { tone in
+        toneless + (tone == " " ? "" : String(tone))
+      })
+    }
+    try topOneScratch.insertKeys([
+      allTones("ㄍㄨㄛ"),
+      allTones("ㄌㄞ"),
+      allTones("ㄧ"),
+      allTones("ㄒㄧㄚ"),
+    ])
+    #expect(topOneScratch.assembledSentence.values.joined() == "過來以下")
+
+    let offers = testHandler.hybridCandidateOffers(for: "guolaiyixia")
+    let composed = try #require(offers.first(where: { $0.candidate.value == "過來一下" }))
+    #expect(composed.source == .pinyinComposed)
+    #expect(composed.candidate.keyArray.count == 4)
+
+    typeSentence("guolaiyixia")
+    #expect(testHandler.calligrapher == "guolaiyixia")
+    let candidateIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "過來一下" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: candidateIndex)
+
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.actualKeys == composed.candidate.keyArray)
+    #expect(testHandler.assembler.assembledSentence.values.joined() == "過來一下")
+  }
+
   private func verifyNativePhoneticPersonalLexicon(
     parser: KeyboardParser,
     expectedProvider: Shared.MixTypeBaseInputProvider

@@ -15,6 +15,7 @@ struct HybridCandidateOffer {
     case personalFullPinyin
     case cassetteQuick
     case pinyinFull
+    case pinyinComposed
     case personalMixedPinyin
     case personalInitials
     case pinyinAbbreviation
@@ -38,6 +39,12 @@ struct HybridCandidateOffer {
   }
 }
 
+private struct HybridPinyinCompositionPathState {
+  let score: Double
+  let readings: [String]
+  let value: String
+}
+
 enum HybridCandidateSelectionOutcome {
   case commit(String)
   case composition
@@ -47,7 +54,8 @@ extension InputHandlerProtocol {
   /// 以 Hybrid raw-key buffer 唯讀生成候選。
   ///
   /// 排序固定為 CIN exact → Personal full Pinyin → CIN quick → full Pinyin
-  /// → Personal mixed Pinyin prefix → Personal initials → abbreviated Pinyin；
+  /// → composed Pinyin sentence → Personal mixed Pinyin prefix → Personal initials
+  /// → abbreviated Pinyin；
   /// 相同輸出值只保留第一次出現者，因此 CIN 命中不會被拼音重新排序到後方。
   func hybridCandidateOffers(for rawKeys: String) -> [HybridCandidateOffer] {
     guard !rawKeys.isEmpty else { return [] }
@@ -92,6 +100,7 @@ extension InputHandlerProtocol {
     groupedOffers.append(cassetteQuick)
 
     groupedOffers.append(hybridFullPinyinOffers(for: rawKeys))
+    groupedOffers.append(hybridComposedPinyinOffers(for: rawKeys))
     let alreadyMatchedPersonalIDs = Set(personalMatches.map(\.entry.id))
     groupedOffers.append(hybridPersonalMixedPinyinOffers(
       for: rawKeys,
@@ -184,6 +193,9 @@ extension InputHandlerProtocol {
       guard confirmHybridPinyinCandidate(canonicalCandidate) else { return nil }
       observeMixTypeExplicitSelection(canonicalCandidate)
       return .composition
+    case .pinyinComposed:
+      guard confirmHybridComposedPinyinCandidate(canonicalCandidate) else { return nil }
+      return .composition
     }
   }
 
@@ -206,21 +218,7 @@ extension InputHandlerProtocol {
   }
 
   private func hybridFullPinyinOffers(for rawKeys: String) -> [HybridCandidateOffer] {
-    guard composer.parser.isPinyin else { return [] }
-    let normalized = rawKeys.lowercased()
-    let trie = Tekkon.PinyinTrie.shared(parser: composer.parser)
-    let chopped = trie.chop(normalized)
-    guard !chopped.isEmpty, chopped.joined() == normalized else { return [] }
-    guard let map = composer.parser.mapZhuyinPinyin else { return [] }
-
-    var possibleKeys: [Homa.PossibleKey] = []
-    for syllable in chopped {
-      guard let tonelessZhuyin = map[syllable] else { return [] }
-      let tones = Tekkon.allowedIntonations.map { tone -> String in
-        tonelessZhuyin + (tone == " " ? "" : String(tone))
-      }
-      possibleKeys.append(.multipleKeys(tones))
-    }
+    guard let possibleKeys = hybridPossiblePinyinKeys(for: rawKeys) else { return [] }
 
     let factoryGrams = currentLM.lxQuerier.hybridPhoneticFactoryGrams(for: possibleKeys)
     let userAndTemporaryGrams = currentLM.lxQuerier.grams(for: possibleKeys)
@@ -255,6 +253,164 @@ extension InputHandlerProtocol {
       let signature = "\(candidate.keyArray.joined(separator: "\u{1F}"))\u{1E}\(candidate.value)"
       return offerBySignature[signature]
     }
+  }
+
+  /// 對「factory 沒有整句詞條、但每個音節都可由既有詞/字組句」的完整拼音，
+  /// 用一個乾淨的 Homa scratch 組字器生成最佳句子候選。
+  ///
+  /// 例如 `guolaiyixia` 沒有四字 factory gram，但 `過來` + `一下` 均在庫，
+  /// 因此 scratch 可得到 `過來一下`。這裡只提供第一次可選能力，不把結果直接
+  /// 寫成詞條；真正持久化仍交給 Composition Phrase Learning 的提交門檻。
+  private func hybridComposedPinyinOffers(for rawKeys: String) -> [HybridCandidateOffer] {
+    guard assembler.isEmpty else { return [] }
+    guard let possibleKeys = hybridPossiblePinyinKeys(for: rawKeys) else { return [] }
+    guard (2 ... LXAssembly.CompositionPhraseLearningStore.maximumPhraseLength).contains(possibleKeys.count) else {
+      return []
+    }
+
+    let keyCount = possibleKeys.count
+    let beamWidth = 16
+    let gramsPerSpan = 24
+    let resultLimit = 12
+    var states = Array(repeating: [HybridPinyinCompositionPathState](), count: keyCount + 1)
+    states[0] = [.init(score: 0, readings: [], value: "")]
+
+    func keepBest(
+      _ candidates: [HybridPinyinCompositionPathState],
+      limit: Int
+    ) -> [HybridPinyinCompositionPathState] {
+      var seen = Set<String>()
+      return candidates.sorted { lhs, rhs in
+        if lhs.score != rhs.score { return lhs.score > rhs.score }
+        return lhs.value < rhs.value
+      }.filter { item in
+        let signature = "\(item.readings.joined(separator: "\u{1F}"))\u{1E}\(item.value)"
+        return seen.insert(signature).inserted
+      }.prefix(limit).map { $0 }
+    }
+
+    for start in 0 ..< keyCount where !states[start].isEmpty {
+      let maxLength = min(assembler.maxSegLength, keyCount - start)
+      guard maxLength > 0 else { continue }
+      for length in 1 ... maxLength {
+        let end = start + length
+        let query = Array(possibleKeys[start ..< end])
+        var seenGramSignatures = Set<String>()
+        let grams = currentLM.lxQuerier.hybridPhoneticGrams(for: query)
+          .filter {
+            $0.isUnigram
+              && $0.keyArray.count == length
+              && $0.current.count == length
+          }
+          .sorted {
+            if $0.probability != $1.probability { return $0.probability > $1.probability }
+            return $0.current < $1.current
+          }
+          .filter { gram in
+            let signature = "\(gram.keyArray.joined(separator: "\u{1F}"))\u{1E}\(gram.current)"
+            return seenGramSignatures.insert(signature).inserted
+          }
+          .prefix(gramsPerSpan)
+
+        guard !grams.isEmpty else { continue }
+        var expanded = states[end]
+        for prefix in states[start] {
+          for gram in grams {
+            expanded.append(
+              .init(
+                score: prefix.score + gram.probability,
+                readings: prefix.readings + gram.keyArray,
+                value: prefix.value + gram.current
+              )
+            )
+          }
+        }
+        states[end] = keepBest(expanded, limit: beamWidth)
+      }
+    }
+
+    var offers: [HybridCandidateOffer] = []
+    for state in keepBest(states[keyCount], limit: resultLimit) {
+      guard LXAssembly.CompositionPhraseLearningStore.isValidPhraseAndReadings(
+        phrase: state.value,
+        readings: state.readings
+      ) else {
+        continue
+      }
+      let candidate: CandidateInState = (keyArray: state.readings, value: state.value)
+      guard canReproduceHybridComposedPinyinCandidate(candidate) else { continue }
+      offers.append(
+        HybridCandidateOffer(
+          candidate: candidate,
+          source: .pinyinComposed,
+          score: state.score
+        )
+      )
+    }
+    return offers
+  }
+
+  /// `rawKeys` 必須能被完整切成合法漢語拼音音節；每音節展開成所有聲調讀音。
+  private func hybridPossiblePinyinKeys(for rawKeys: String) -> [Homa.PossibleKey]? {
+    guard composer.parser.isPinyin else { return nil }
+    let normalized = rawKeys.lowercased()
+    let trie = Tekkon.PinyinTrie.shared(parser: composer.parser)
+    let chopped = trie.chop(normalized)
+    guard !chopped.isEmpty, chopped.joined() == normalized else { return nil }
+    guard let map = composer.parser.mapZhuyinPinyin else { return nil }
+
+    var possibleKeys: [Homa.PossibleKey] = []
+    possibleKeys.reserveCapacity(chopped.count)
+    for syllable in chopped {
+      guard let tonelessZhuyin = map[syllable] else { return nil }
+      let tones = Tekkon.allowedIntonations.map { tone -> String in
+        tonelessZhuyin + (tone == " " ? "" : String(tone))
+      }
+      possibleKeys.append(.multipleKeys(tones))
+    }
+    return possibleKeys
+  }
+
+  /// composed candidate 並不存在一個「整句 factory gram」，因此不能用整節 override。
+  /// 直接插入 scratch 已確認過的實際讀音，讓真實 Homa 依同一 LM 自然組句即可。
+  @discardableResult
+  private func confirmHybridComposedPinyinCandidate(_ candidate: CandidateInState) -> Bool {
+    guard assembler.isEmpty,
+          candidate.keyArray.count >= 2,
+          candidate.keyArray.count == candidate.value.count
+    else {
+      return false
+    }
+    let backup = assembler.copy
+    let keys = candidate.keyArray.map { Homa.PossibleKey.singleKey($0) }
+    guard (try? assembler.insertKeys(keys)) != nil,
+          assembler.actualKeys == candidate.keyArray,
+          assembler.assembledSentence.values.joined() == candidate.value
+    else {
+      assembler = backup
+      return false
+    }
+    calligrapher.removeAll()
+    composer.clear()
+    invalidateFuriousTrail()
+    return true
+  }
+
+  private func canReproduceHybridComposedPinyinCandidate(_ candidate: CandidateInState) -> Bool {
+    guard candidate.keyArray.count >= 2,
+          candidate.keyArray.count == candidate.value.count
+    else {
+      return false
+    }
+    let scratch = Homa.Assembler(
+      gramQuerier: assembler.gramQuerier,
+      gramAvailabilityChecker: assembler.gramAvailabilityChecker
+    )
+    scratch.maxSegLength = assembler.maxSegLength
+    let keys = candidate.keyArray.map { Homa.PossibleKey.singleKey($0) }
+    guard (try? scratch.insertKeys(keys)) != nil else { return false }
+    return scratch.actualKeys == candidate.keyArray
+      && scratch.assembledSentence.values.joined() == candidate.value
   }
 
   private func hybridPersonalMixedPinyinOffers(

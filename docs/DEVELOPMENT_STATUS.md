@@ -80,6 +80,8 @@ initials, and mixed-Pinyin lookup without conflating ordinary composition with e
 - exact committed Chinese compositions of 2...6 characters learn by `phrase + actual readings`, using the existing Auto Promotion threshold (default 3): ✅
 - composition learning rejects single characters, punctuation/ASCII mixtures, >6-character phrases, unmatched commit text, pending raw buffers, and reading-count mismatches: ✅
 - composition-learning promotion feeds the same Personal Lexicon, so learned `就好了` immediately supports `jiuhaole / jhaole / jhl`: ✅
+- full-Pinyin composed-candidate provider: if no whole-phrase gram exists, 2...6 valid Pinyin syllables are segmented against existing factory/user grams and surfaced through a bounded N-best DP instead of failing closed: ✅
+- production regression confirms the real factory contains `過來` and `一下`; Hybrid UI regression locks `guolaiyixia → 過來一下` even when a higher-scoring tone ambiguity (`過來以下`) exists: ✅
 - toneless Pinyin single-character preference store (`single-character-preferences-cht/chs.json`): ✅
 - explicit single-character Pinyin selections learn by tone-insensitive Zhuyin bucket (for example `ㄧㄠˋ → ㄧㄠ`) and persist across restarts: ✅
 - single-character candidate order starts changing only after 3 explicit selections; the first 1–2 selections are recorded but do not reorder, reducing accidental-learning risk: ✅
@@ -341,17 +343,30 @@ after which `jhl` and `jhaole` resolve it; commits containing extra punctuation 
 not count. The dedicated store JSON round-trip and LXMgr save/reload pass. Full LibVanguard tests pass,
 SettingsUI remains 17/17 PASS, LXMgrTests are 26/26 PASS, and `make debug` passes.
 
+Hybrid full-Pinyin lookup now has a composition fallback for phrases that are not stored as one factory
+gram. When a raw token can be fully chopped into 2...6 Hanyu-Pinyin syllables, the provider queries bounded
+contiguous spans against the existing phonetic lexicon and runs a small N-best dynamic program over those
+grams. This avoids materializing tone combinations or aliases while still surfacing plausible segmented
+sentences. Each candidate carries the exact chosen Zhuyin readings and is replayed through a clean Homa
+scratch before being exposed, so only candidates that the real assembler can reproduce survive. The live
+selection path then inserts those exact readings into the actual Homa composition rather than inventing a
+nonexistent whole-phrase gram. Regression `IH531` deliberately makes the top-1 all-tone Homa result
+`過來以下` but still requires the candidate UI for `guolaiyixia` to contain and successfully select
+`過來一下`. Production `LXMgr` regression `035` confirms the shipped factory data contains both source
+segments `過來` and `一下`. Full LibVanguard tests pass, SettingsUI remains 17/17 PASS, LXMgrTests are
+27/27 PASS, and `make debug` passes.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: 7c806a5c
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow; exact-commit composition phrase learning with independent pending persistence
-Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 26/26 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Latest commit: d0aa27d1 plus composed-Pinyin N-best working tree (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow; exact-commit composition phrase learning with independent pending persistence; bounded N-best full-Pinyin composition fallback
+Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 27/27 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin build installed; composition-learning build installed and running with strict codesign verification; existing private Personal/CIN data preserved
-Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and final live composition-learning promotion/restart-persistence acceptance remain
-Next unfinished item: verify a new 2...6-character phrase promotes after three exact commits in the installed IME and persists across restart, then continue V0.3 after V0.2 acceptance
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin and composition-learning builds installed; composed-Pinyin N-best build pending installation; existing private Personal/CIN data preserved
+Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and final live composed-Pinyin / composition-learning persistence acceptance remain
+Next unfinished item: commit/push/install composed-Pinyin N-best, verify live `guolaiyixia → 過來一下`, then verify a newly composed phrase promotes after three exact commits and survives restart
 ```
