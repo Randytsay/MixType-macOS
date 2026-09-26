@@ -36,11 +36,23 @@ final class CtlSettingsUITests {
     CtlSettingsUI.show()
     RunLoop.current.run(until: Date().addingTimeInterval(0.1))
     #expect(CtlSettingsUI.shared != nil)
+    #expect(CtlSettingsUI.shared?.window?.level == .normal)
 
     CtlSettingsUI.shared?.close()
     RunLoop.current.run(until: Date().addingTimeInterval(0.1))
     #expect(CtlSettingsUI.shared == nil)
     // window 的 contentView 也應該已被移除。
     #expect(CtlSettingsUI.shared?.window?.contentView == nil)
+  }
+
+  @Test
+  func testCocoaSettingsWindowUsesNormalWindowLevel() {
+    CtlSettingsCocoa.show()
+    RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+    #expect(CtlSettingsCocoa.shared != nil)
+    #expect(CtlSettingsCocoa.shared?.window?.level == .normal)
+    CtlSettingsCocoa.shared?.close()
+    RunLoop.current.run(until: Date().addingTimeInterval(0.1))
+    #expect(CtlSettingsCocoa.shared == nil)
   }
 }

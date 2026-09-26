@@ -111,12 +111,9 @@ public final class CtlSettingsCocoa: NSWindowController, NSWindowDelegate {
         shared.windowDidLoad()
       }
       sharedWindow.setPosition(vertical: .top, horizontal: .right, padding: 20)
-      // 單元測試／診斷宿主（pendingUnitTests）下略過「強制置前＋強迫視窗層級」，
-      // 避免測試或 Instruments 錄製期間視窗搶焦點。
-      if !UserDefaults.pendingUnitTests {
-        sharedWindow.orderFrontRegardless() // 逼著視窗往最前方顯示
-        sharedWindow.level = .statusBar
-      }
+      // 偏好設定應使用一般 window level；statusBar 層級會把 Open/Save panel
+      // 以及 Finder 等正常視窗擋在後方，特別會破壞 MixType 備份路徑選擇。
+      sharedWindow.level = .normal
       shared.showWindow(shared)
       if !UserDefaults.pendingUnitTests {
         NSApp.popup()

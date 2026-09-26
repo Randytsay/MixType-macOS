@@ -91,12 +91,10 @@
           shared.windowDidLoad()
         }
         sharedWindow.setPosition(vertical: .top, horizontal: .right, padding: 20)
-        // 單元測試／診斷宿主（pendingUnitTests）下略過「強制置前＋強迫視窗層級」，
-        // 避免測試或 Instruments 錄製期間視窗搶焦點。
-        if !UserDefaults.pendingUnitTests {
-          sharedWindow.orderFrontRegardless() // 逼著視窗往最前方顯示
-          sharedWindow.level = .statusBar
-        }
+        // 偏好設定是一般文件型視窗，不應使用 statusBar 層級常駐最前景。
+        // 使用一般 window level 才能讓 NSSavePanel / NSOpenPanel、Finder 與其他 App
+        // 正常出現在設定視窗前方；showWindow 仍會在使用者叫出設定時將其帶至前景。
+        sharedWindow.level = .normal
         shared.showWindow(shared)
         if !UserDefaults.pendingUnitTests {
           NSApp.popup()
