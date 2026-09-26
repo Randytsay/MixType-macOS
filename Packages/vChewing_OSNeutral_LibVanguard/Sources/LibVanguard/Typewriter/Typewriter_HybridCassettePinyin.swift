@@ -325,7 +325,7 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
     let hasAuthoritativeWholeOffer = wholeOffers.contains {
       switch $0.source {
       case .cassetteExact, .personalFullPinyin, .cassetteQuick, .pinyinFull,
-           .personalMixedPinyin, .personalInitials:
+           .mixedSegmented, .personalMixedPinyin, .personalInitials:
         return true
       case .pinyinComposed, .pinyinAbbreviation:
         return false
@@ -349,7 +349,8 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
         switch $0.source {
         case .personalFullPinyin, .pinyinFull, .pinyinComposed, .personalMixedPinyin:
           return true
-        case .cassetteExact, .cassetteQuick, .personalInitials, .pinyinAbbreviation:
+        case .cassetteExact, .cassetteQuick, .mixedSegmented, .personalInitials,
+             .pinyinAbbreviation:
           return false
         }
       }
@@ -382,34 +383,10 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
   /// 這可避免把 `taida`、`taidag` 這類合法拼音或僅多一鍵的中間態誤切。
   private func isConfidentASCIIIntentPrefix(_ text: String) -> Bool {
     guard !isProtectedMixedToken(text) else { return false }
-    guard MixTypeEnglishIntent.looksLikeEnglishWord(text),
-          handler.composer.parser.isPinyin
-    else {
-      return false
-    }
-    let normalized = text.lowercased()
-    let chars = Array(normalized)
-    if zip(chars, chars.dropFirst()).contains(where: { $0 == $1 }) {
-      return true
-    }
-
-    let trie = Tekkon.PinyinTrie.shared(parser: handler.composer.parser)
-    guard let pinyinMap = handler.composer.parser.mapZhuyinPinyin else { return false }
-    var longestCoveredPrefixLength = 0
-    if !normalized.isEmpty {
-      for length in stride(from: normalized.count, through: 1, by: -1) {
-        let prefix = String(normalized.prefix(length))
-        let chopped = trie.chop(prefix)
-        let isFullyCovered = !chopped.isEmpty
-          && chopped.joined() == prefix
-          && chopped.allSatisfy { pinyinMap[$0] != nil }
-        if isFullyCovered {
-          longestCoveredPrefixLength = length
-          break
-        }
-      }
-    }
-    return normalized.count - longestCoveredPrefixLength >= 2
+    return MixTypeEnglishIntent.isConfidentEnglishSegment(
+      text,
+      parser: handler.composer.parser
+    )
   }
 
   private func refreshState(session: Handler.Session) {

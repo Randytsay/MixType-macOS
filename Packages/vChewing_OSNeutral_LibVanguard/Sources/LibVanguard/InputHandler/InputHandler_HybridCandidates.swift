@@ -15,6 +15,7 @@ struct HybridCandidateOffer {
     case personalFullPinyin
     case cassetteQuick
     case pinyinFull
+    case mixedSegmented
     case pinyinComposed
     case personalMixedPinyin
     case personalInitials
@@ -54,7 +55,8 @@ extension InputHandlerProtocol {
   /// 以 Hybrid raw-key buffer 唯讀生成候選。
   ///
   /// 排序固定為 CIN exact → Personal full Pinyin → CIN quick → full Pinyin
-  /// → composed Pinyin sentence → Personal mixed Pinyin prefix → Personal initials
+  /// → deterministic Pinyin+English+Pinyin mixed candidate → composed Pinyin sentence
+  /// → Personal mixed Pinyin prefix → Personal initials
   /// → abbreviated Pinyin；
   /// 相同輸出值只保留第一次出現者，因此 CIN 命中不會被拼音重新排序到後方。
   func hybridCandidateOffers(for rawKeys: String) -> [HybridCandidateOffer] {
@@ -100,6 +102,7 @@ extension InputHandlerProtocol {
     groupedOffers.append(cassetteQuick)
 
     groupedOffers.append(hybridFullPinyinOffers(for: rawKeys))
+    groupedOffers.append(hybridMixedSegmentedOffers(for: rawKeys))
     groupedOffers.append(hybridComposedPinyinOffers(for: rawKeys))
     let alreadyMatchedPersonalIDs = Set(personalMatches.map(\.entry.id))
     groupedOffers.append(hybridPersonalMixedPinyinOffers(
@@ -195,6 +198,11 @@ extension InputHandlerProtocol {
       guard confirmHybridPinyinCandidate(canonicalCandidate) else { return nil }
       observeMixTypeExplicitSelection(canonicalCandidate)
       return .composition
+    case .mixedSegmented:
+      calligrapher.removeAll()
+      composer.clear()
+      invalidateFuriousTrail()
+      return .commit(committableDisplayText(sansReading: true) + canonicalCandidate.value)
     case .pinyinComposed:
       guard confirmHybridComposedPinyinCandidate(canonicalCandidate) else { return nil }
       return .composition
@@ -255,6 +263,96 @@ extension InputHandlerProtocol {
       let signature = "\(candidate.keyArray.joined(separator: "\u{1F}"))\u{1E}\(candidate.value)"
       return offerBySignature[signature]
     }
+  }
+
+  /// V0.3 Phase A Batch 4：單一 raw buffer 內的 Pinyin + English + Pinyin。
+  ///
+  /// 例如 `jintianmeetinggai` 會產生 `今天meeting改` 這類整體候選，但絕不
+  /// 在候選確認前自動提交任何中文字。中間 ASCII 必須通過較強的 English gate；
+  /// 兩側則只接受 full/composed Personal/factory Pinyin，避免 initials/abbreviation
+  /// 的弱匹配把普通拼音句誤切成中英混打。
+  private func hybridMixedSegmentedOffers(for rawKeys: String) -> [HybridCandidateOffer] {
+    guard prefs.mixTypeMixedTokenSegmentationEnabled,
+          assembler.isEmpty,
+          composer.parser.isPinyin,
+          (8 ... 48).contains(rawKeys.count),
+          rawKeys.range(of: "^[a-z]+$", options: .regularExpression) != nil
+    else {
+      return []
+    }
+
+    let count = rawKeys.count
+    var results: [HybridCandidateOffer] = []
+    var seenValues = Set<String>()
+
+    // prefix/suffix 至少各 2 字母；English 中段至少 4 字母。
+    for middleStartOffset in 2 ... max(2, count - 6) {
+      let minimumMiddleEnd = middleStartOffset + 4
+      guard minimumMiddleEnd <= count - 2 else { continue }
+      for middleEndOffset in minimumMiddleEnd ... (count - 2) {
+        let prefixEnd = rawKeys.index(rawKeys.startIndex, offsetBy: middleStartOffset)
+        let middleEnd = rawKeys.index(rawKeys.startIndex, offsetBy: middleEndOffset)
+        let prefixRaw = String(rawKeys[..<prefixEnd])
+        let middleRaw = String(rawKeys[prefixEnd ..< middleEnd])
+        let suffixRaw = String(rawKeys[middleEnd...])
+
+        guard MixTypeEnglishIntent.isConfidentEnglishSegment(
+          middleRaw,
+          parser: composer.parser
+        ) else {
+          continue
+        }
+
+        let prefixOffers = hybridStrongPinyinSegmentOffers(for: prefixRaw).filter {
+          $0.candidate.keyArray.count >= 2 && $0.candidate.value.count >= 2
+        }
+        guard !prefixOffers.isEmpty else { continue }
+        let suffixOffers = hybridStrongPinyinSegmentOffers(for: suffixRaw)
+        guard !suffixOffers.isEmpty else { continue }
+
+        for prefix in prefixOffers.prefix(4) {
+          for suffix in suffixOffers.prefix(4) {
+            let value = prefix.candidate.value + middleRaw + suffix.candidate.value
+            guard seenValues.insert(value).inserted else { continue }
+            results.append(
+              HybridCandidateOffer(
+                candidate: (
+                  keyArray: prefix.candidate.keyArray + suffix.candidate.keyArray,
+                  value: value
+                ),
+                source: .mixedSegmented,
+                score: prefix.score + suffix.score + Double(middleRaw.count) * 0.001
+              )
+            )
+          }
+        }
+      }
+    }
+
+    return results.sorted { lhs, rhs in
+      if lhs.score != rhs.score { return lhs.score > rhs.score }
+      return lhs.candidate.value < rhs.candidate.value
+    }.prefix(12).map { $0 }
+  }
+
+  private func hybridStrongPinyinSegmentOffers(for rawKeys: String) -> [HybridCandidateOffer] {
+    guard hybridPossiblePinyinKeys(for: rawKeys) != nil else { return [] }
+
+    var offers: [HybridCandidateOffer] = []
+    offers.append(contentsOf: currentLM.lxQuerier.personalLexiconMatches(for: rawKeys).compactMap { match in
+      guard match.kind == .fullPinyin else { return nil }
+      return HybridCandidateOffer(
+        candidate: (keyArray: match.entry.readings, value: match.entry.phrase),
+        source: .personalFullPinyin,
+        score: match.score,
+        personalEntryID: match.entry.id
+      )
+    })
+    offers.append(contentsOf: hybridFullPinyinOffers(for: rawKeys))
+    offers.append(contentsOf: hybridComposedPinyinOffers(for: rawKeys))
+
+    var seen = Set<String>()
+    return offers.filter { seen.insert($0.candidate.value).inserted }
   }
 
   /// 對「factory 沒有整句詞條、但每個音節都可由既有詞/字組句」的完整拼音，
