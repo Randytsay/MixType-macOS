@@ -1,5 +1,7 @@
 # MixType V0.1 — Hybrid CIN + Pinyin Plan
 
+> **Historical specification.** V0.1 has been implemented and accepted. For current production/release status, see `docs/DEVELOPMENT_STATUS.md`.
+
 ## Goal
 
 Deliver a minimal, testable hybrid typing mode for MixType:

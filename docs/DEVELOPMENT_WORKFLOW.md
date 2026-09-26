@@ -117,7 +117,8 @@ Recommended milestone branches:
 ```text
 feat/hybrid-input-v01
 feat/personal-lexicon-v02
-feat/mixed-input-v03
+feat/mixed-token-v03
+feat/backup-restore-v04
 ```
 
 For larger milestones, smaller task branches may branch from the milestone branch when useful.
@@ -131,6 +132,12 @@ git pull --ff-only
 ```
 
 Avoid unrelated changes in the same branch.
+
+Released milestone branches are merged into `main` only after applicable unit/build/runtime gates pass.
+MixType release tags use the fork-specific form `mixtype-vX.Y.Z` so they do not collide with upstream
+vChewing's `4.x.y` version/tag line. A release tag must point at the exact tested `main` commit, and
+release notes must state signing/notarization status accurately. Never attach private CIN, Personal
+Lexicon, learning data, preferences exports, or `.mixtypebackup` files to a public release.
 
 ## 6. Work in reviewable phases
 

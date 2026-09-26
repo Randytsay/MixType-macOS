@@ -1,4 +1,77 @@
+# MixType for macOS
+
+> **融合 CIN／嘸虾米／仓颉、拼音、简拼、个人学习与中英文混输的 macOS 中文输入法。**
+
 语言：*简体中文* | [繁體中文](./README.md)
+
+**MixType** 基于 [vChewing](https://github.com/vChewing/vChewing-macOS) 开发，当前正式版本为 **MixType v0.4.0**。
+
+## 最新版本
+
+- Release：<https://github.com/Randytsay/MixType-macOS/releases/tag/mixtype-v0.4.0>
+- Universal installer：Apple Silicon + Intel
+- 当前公开 installer 为 **ad-hoc signed / 未经 Apple notarize**；新 Mac 第一次运行时可能需要在 macOS「隐私与安全性」中手动允许。
+
+## 已完成功能
+
+- 注音、拼音、CIN／字根三种主要输入方式。
+- 嘸虾米、仓颉及其他相容 `.cin` 字码表可作为 CIN 来源，并与拼音候选共存。
+- 全拼、简拼与 mixed-prefix，例如 `weihong / wh → 韋宏`、`guolaiyixia / glyx → 過來一下`。
+- Personal Lexicon 管理与本地持久化。
+- 候选选择学习、组句学习、单字偏好与自动晋升。
+- Mixed Token：`server2026`、`MacBookM6`、e-mail、URL、`3pm`、`20kW`、`300RT` 等。
+- 连续混输：`jintianmeeting → 今天meeting`、`jintianmeetinggai → 今天meeting改`。
+- 合法 CIN 标点码优先，例如已验证的 `s. → ？`。
+- V0.4.0 完整备份／恢复：一个 `.mixtypebackup` 可保存 CIN、Personal Lexicon、学习资料、主要偏好与既有用户词库资料。
+- 核心输入、学习与备份均为本机处理，不依赖 LLM 或网络服务。
+
+## 快速安装
+
+1. 前往 [MixType v0.4.0 Release](https://github.com/Randytsay/MixType-macOS/releases/tag/mixtype-v0.4.0)。
+2. 下载 `MixType-macOS-mixtype-v0.4.0-unnotarized.zip`。
+3. 解压后运行 installer。
+4. 如果 Gatekeeper 阻挡，请到「系统设置 → 隐私与安全性」允许运行，或在 Finder 中右键选择「打开」。
+
+Release 不包含任何私人 CIN、Personal Lexicon、学习资料或 `.mixtypebackup`。
+
+## 注音、拼音、仓颉在哪里选择
+
+在 **唯音输入法偏好设置 → 辞典设置 → MixType 主要输入方式** 可选择：
+
+- **注音**
+- **拼音**
+- **CIN／字根**
+
+仓颉与嘸虾米都属于 CIN／字根来源。若要使用仓颉，请先在磁带／Cassette 设置载入仓颉 `.cin`，再选择 **CIN／字根**。
+
+## 换新 Mac：完整备份与恢复
+
+1. 旧 Mac 在 **「完整备份与恢复 · MixType」** 点击 **「导出完整备份…」**。
+2. 新 Mac 从 GitHub 安装 MixType。
+3. 在相同设置页点击 **「恢复完整备份…」**。
+4. 选择 `.mixtypebackup` 并确认。
+
+备份会在新 Mac 重建本机路径，不会沿用旧电脑的绝对路径。Schema v1 不包含短期 POM／perception 暂态记忆。
+
+## 开发文件
+
+- [Development Workflow](./docs/DEVELOPMENT_WORKFLOW.md)
+- [Development Status](./docs/DEVELOPMENT_STATUS.md)
+- [V0.1 Hybrid CIN + Pinyin Plan](./docs/MIXTYPE_V0.1_HYBRID_PLAN.md)
+- [V0.2 Personal Lexicon Plan](./docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md)
+
+## Upstream 与授权
+
+MixType fork 自 **vChewing macOS**，保留原项目授权、版权声明与第三方组件授权；MixType 使用独立产品名称以与上游正式版本区分。
+
+- Upstream: https://github.com/vChewing/vChewing-macOS
+- vChewing project site: https://vchewing.github.io/
+
+---
+
+## 上游 vChewing 原始 README
+
+以下保留 fork 的上游 README，供原始功能、构建方式、系统需求与授权信息参考。
 
 仅以此 README 纪念祁建华 (CHIEN-HUA CHI, 1921-2001)。
 

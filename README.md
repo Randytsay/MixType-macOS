@@ -1,41 +1,74 @@
 # MixType for macOS
 
-> **A hybrid macOS input method combining Boshiamy CIN, Pinyin, abbreviation input, adaptive learning, and seamless Chinese-English typing.**
+> **A hybrid macOS input method combining CIN/Boshiamy/Cangjie, Pinyin, abbreviation input, adaptive learning, and seamless Chinese-English typing.**
 
-**MixType** 是基於 [vChewing](https://github.com/vChewing/vChewing-macOS) 的 macOS 輸入法實驗性分支，目標是在同一個輸入模式中融合 **嘸蝦米／CIN、拼音、簡拼、個人化學習與中英文混合輸入**，減少在不同輸入模式之間反覆切換的負擔。
+**MixType** 是基於 [vChewing](https://github.com/vChewing/vChewing-macOS) 的 macOS 中文輸入法 fork，在同一個輸入環境中融合 **CIN／嘸蝦米／倉頡、拼音、簡拼、個人化學習與中英文混合輸入**。
 
-## 專案目標
+## 最新版本
 
-MixType 預計朝以下方向發展：
+**MixType v0.4.0** 已正式發布。
 
-- **嘸蝦米／CIN 優先**：保留既有字根輸入的肌肉記憶與精確性。
-- **拼音候選融合**：同一串按鍵可同時由 CIN 與拼音引擎解析，並將候選結果整合排序。
-- **全拼與簡拼**：支援完整拼音，以及如 `wbzd → 我不知道`、`cyw → 蔡耀文` 的首字母快速輸入。
-- **個人化學習**：依據實際選字與使用頻率學習個人常用詞、人名、專有名詞與縮寫。
-- **中英文無縫混打**：降低輸入中文、英文縮寫、產品名稱與技術名詞時頻繁切換模式的需要。
-- **本機優先**：核心輸入、候選與學習機制以本機處理為原則，兼顧速度、隱私與離線可用性。
+- Release：<https://github.com/Randytsay/MixType-macOS/releases/tag/mixtype-v0.4.0>
+- Universal installer：Apple Silicon + Intel
+- 目前公開 installer 為 **ad-hoc signed / 未 Apple notarize**；新 Mac 第一次執行時可能需要在 macOS「隱私權與安全性」手動允許。
 
-## 目前狀態
+## 已完成功能
 
-> 🚧 **Early Development / 開發初期**
->
-> 本專案目前剛由 vChewing fork 建立。vChewing 原有功能與架構仍為目前基礎；上面列出的 Hybrid CIN + Pinyin、簡拼學習、候選融合與完整中英混打能力屬於 **MixType 的開發目標**，並非目前所有功能都已完成。
+- **三種主要輸入方式**：注音、拼音、CIN／字根。
+- **CIN Hybrid**：可用嘸蝦米、倉頡或其他相容 `.cin` 字碼表，並同時保留拼音輔助候選。
+- **全拼／簡拼／混合前綴**：例如 `weihong / wh → 韋宏`、`guolaiyixia / glyx → 過來一下`、`jhao → 就好`。
+- **Personal Lexicon**：新增、編輯、停用、刪除、搜尋、匯入／匯出個人詞庫。
+- **個人化學習**：候選選擇學習、組句學習、單字選字偏好與自動晉升。
+- **中英文 Mixed Token**：支援 `server2026`、`MacBookM6`、`ABC123`、`SOC80%`、e-mail、URL、`3pm`、`20kW`、`300RT` 等。
+- **連續混打**：例如 `jintianmeeting → 今天meeting`、`jintianmeetinggai → 今天meeting改`。
+- **CIN 優先保護**：合法 CIN 標點碼不會被 Mixed Token 誤攔，例如已驗證的 `s. → ？`。
+- **完整備份／還原**：單一 `.mixtypebackup` 可攜式備份檔可保存 CIN、Personal Lexicon、學習資料、主要偏好與既有使用者詞庫資料。
+- **本機優先**：核心輸入、候選、學習與備份皆在本機處理，不需要 LLM 或網路服務。
 
+## 快速安裝
+
+1. 前往 [MixType v0.4.0 Release](https://github.com/Randytsay/MixType-macOS/releases/tag/mixtype-v0.4.0)。
+2. 下載 `MixType-macOS-mixtype-v0.4.0-unnotarized.zip`。
+3. 解壓縮後執行 installer。
+4. 若 macOS Gatekeeper 阻擋，請至「系統設定 → 隱私權與安全性」允許執行，或以 Finder 右鍵「打開」。
+5. 安裝完成後，在 macOS 鍵盤／輸入來源中選用 vChewing-CHT／MixType 所使用的輸入來源。
+
+> Release 不包含任何私人 CIN、Personal Lexicon、學習資料或 `.mixtypebackup`。
+
+## 選擇注音、拼音或 CIN／倉頡
+
+在 **唯音輸入法偏好設定 → 辭典設定 → MixType 主要輸入方式** 可選：
+
+- **注音**：使用原生注音輸入。
+- **拼音**：使用原生拼音輸入。
+- **CIN／字根**：使用載入的 `.cin` 字碼表並保留 MixType Hybrid 能力。
+
+倉頡與嘸蝦米都屬於 CIN／字根來源。若要從嘸蝦米改成倉頡，先在磁帶／Cassette 設定載入倉頡 `.cin`，再選 **CIN／字根**。
+
+## 換新 Mac：完整備份與還原
+
+V0.4.0 起可從偏好設定的 **「完整備份與還原 · MixType」** 使用：
+
+1. 舊 Mac 點 **「匯出完整備份…」**，取得一個 `.mixtypebackup`。
+2. 新 Mac 從 GitHub 安裝 MixType。
+3. 開啟偏好設定，點 **「還原完整備份…」**。
+4. 選擇備份檔並確認還原。
+
+備份格式會重新建立新 Mac 的本機路徑，不會沿用舊 Mac 的 `/Users/...` 絕對路徑。Schema v1 刻意不搬移短期 POM／perception 暫態記憶。
 
 ## 開發文件
 
 MixType 採用 GitHub 作為唯一開發真相來源，CoS Mac、WebCodex 與其他 Coding Agent 均需依同一套規格、狀態與交接流程協作。
 
 - [Development Workflow](./docs/DEVELOPMENT_WORKFLOW.md) — 分支、reconciliation、CoS Mac / WebCodex 分工、測試與真機驗收規則
-- [Development Status](./docs/DEVELOPMENT_STATUS.md) — 目前做到哪、下一步與跨 Agent 交接狀態
-- [V0.1 Hybrid CIN + Pinyin Plan](./docs/MIXTYPE_V0.1_HYBRID_PLAN.md) — 第一階段 Hybrid 輸入技術規格
-- [V0.1 Phase A Implementation Audit](./docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md) — Xcode baseline 完成後可直接實作的檔案／函式／測試切入點
-- [V0.2 Personal Lexicon Plan](./docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md) — 個人詞庫、拼音／簡拼鍵、自動學習與晉升規格
-
+- [Development Status](./docs/DEVELOPMENT_STATUS.md) — 目前 release、測試與跨 Agent 交接狀態
+- [V0.1 Hybrid CIN + Pinyin Plan](./docs/MIXTYPE_V0.1_HYBRID_PLAN.md) — 歷史技術規格
+- [V0.1 Phase A Implementation Audit](./docs/MIXTYPE_V0.1_PHASE_A_AUDIT.md) — 歷史 implementation audit
+- [V0.2 Personal Lexicon Plan](./docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md) — 歷史 V0.2 技術規格
 
 ## Upstream 與授權
 
-MixType fork 自 **vChewing macOS**，並保留原專案的授權、著作權聲明與第三方元件授權。後續修改與散布將遵循上游授權條款；本分支使用 **MixType** 名稱，以與上游 vChewing 正式版本清楚區分。
+MixType fork 自 **vChewing macOS**，並保留原專案的授權、著作權聲明與第三方元件授權。後續修改與散布遵循上游授權條款；本 fork 使用 **MixType** 名稱，以與上游 vChewing 正式版本清楚區分。
 
 - Upstream: https://github.com/vChewing/vChewing-macOS
 - vChewing project site: https://vchewing.github.io/
@@ -44,7 +77,7 @@ MixType fork 自 **vChewing macOS**，並保留原專案的授權、著作權聲
 
 ## 上游 vChewing 原始 README
 
-以下保留 fork 當下的上游 README，供原始功能、建置方式、系統需求與授權資訊參考。
+以下保留 fork 的上游 README，供原始功能、建置方式、系統需求與授權資訊參考。
 
 語言：[简体中文](./README-CHS.md) | *繁體中文*
 

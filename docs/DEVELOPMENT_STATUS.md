@@ -4,7 +4,7 @@ This file is the canonical handoff/status record for active MixType development.
 
 ## Current milestone
 
-**V0.4 — Portable Backup / Restore**
+**V0.4.0 — released / maintenance baseline**
 
 Specifications:
 
@@ -13,9 +13,9 @@ Specifications:
 
 ## Current phase
 
-**V0.4 Phase A — portable personal backup / restore implemented and validated**
+**V0.4.0 release complete — portable backup / restore accepted on real Mac**
 
-V0.3.0 remains the released baseline (`mixtype-v0.3.0`). V0.4 adds a portable, versioned
+V0.4.0 is the current released baseline (`mixtype-v0.4.0`, tag commit `1d12509c`). V0.4 adds a portable, versioned
 `.mixtypebackup` format so a new Mac can restore the user's MixType environment without copying old
 absolute paths. The backup includes portable preferences, the active CIN/cassette file bytes and filename,
 CHT/CHS Personal Lexicon, Auto Promotion pending observations, composition-learning pending observations,
@@ -146,7 +146,7 @@ data. Digit-leading time/unit tokens and e-mail/URL tokens retain their accepted
 - restore rollback snapshots preferences and destination files: ✅
 - SwiftUI + Cocoa complete-backup export/restore UI with destructive-restore confirmation: ✅
 - backup/restore localization EN / zh-Hant / zh-Hans / JA: ✅ lint
-- V0.4 validation: MainAssembly 43 tests PASS; SettingsUI 17/17 PASS; full LibVanguard PASS; `make debug` PASS; `git diff --check` PASS
+- V0.4 validation: MainAssembly 43/43 PASS; SettingsUI 18/18 PASS; full LibVanguard PASS; four localization lints PASS; `make debug` PASS; `git diff --check` PASS
 - e-mail / URL token preservation (`email@example.com`, `https://example.com/path?q=1`): ✅ focused regression
 - adjacent English→Pinyin split without auto-selection (`今天meetinggai` → commit `今天meeting`, keep `gai` candidates): ✅ focused regression
 - valid-Pinyin anti-split guards (`nengliu`, `taidagai`) and protected-token atomicity: ✅ focused regression
@@ -458,19 +458,21 @@ PASS, and `make debug` passes.
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
-Current branch: feat/backup-restore-v04
-Released baseline: `mixtype-v0.3.0` from `ee2fff27` (universal arm64 + x86_64, ad-hoc signed, explicitly unnotarized)
-Latest V0.4 core commit: `064d02ef` (portable backup / restore core)
-Completed in current V0.4 working batch: schema-v1 backup package; portable preferences; CIN relocation; CHT/CHS Personal / promotion / composition / single-character learning payloads; legacy user-data payloads; exact restore semantics; rollback/fail-closed validation; SwiftUI + Cocoa export/restore UI; four localizations
-Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; MainAssembly 43/43 PASS including backup round-trip + malformed-package fail-closed regressions; four localization files lint PASS; `make debug` PASS; `git diff --check` PASS.
-Privacy: no private CIN, Personal Lexicon, pending-learning, or preference-data file is committed. Backup files are created locally only when the user explicitly exports them.
-Portability: backup regression proves old cassette and user-data absolute paths are absent; restore writes to the new Mac's default portable locations and internal cassette cache.
-Known limitation: schema v1 intentionally excludes transient POM/perception memory and does not register a Finder document type for `.mixtypebackup`; Settings open/save panels recognize the extension directly.
-Mac runtime install: V0.4 Debug IME installed after backing up the previous bundle. Strict codesign PASS; OpenVanilla remained present; 15 known portable/private data files (including the active CIN and MixType learning/user-data roles) were hash-compared before/after and are unchanged.
-Latest V0.4 UI/hardening commit: `db53f354` — complete Backup / Restore UI, exact restore semantics, localization, and portability regressions.
-Preferences-window blocker fixed in `75af996d`: both SwiftUI and Cocoa settings controllers now use normal window level instead of forcing `.statusBar` / `orderFrontRegardless()`. This lets NSSavePanel / NSOpenPanel, Finder, and other apps appear above Preferences normally. SettingsUI regression count is now 18/18, including normal-level assertions for both settings implementations. The fixed Debug IME was reinstalled with strict codesign PASS; all 15 private-data hashes remained unchanged and OpenVanilla was preserved.
-Real-Mac export acceptance: PASS. A real `.mixtypebackup` exported from Settings was inspected read-only and confirmed schema v1, correct product identifier, both CHT/CHS mode payloads, active CIN payload, valid preferences, valid versioned learning JSON, and no old absolute user/cassette paths. No private content was printed during acceptance.
-Export filename hardening: the first live export revealed NSSavePanel appending the allowed extension to an already-suffixed suggested name, producing `.mixtypebackup.mixtypebackup`. Both SwiftUI and Cocoa suggested names are now extensionless so NSSavePanel contributes exactly one `.mixtypebackup` suffix. The already-exported double-suffix backup remains structurally valid and restorable.
-Release: `mixtype-v0.4.0` published from `1d12509c` on 2026-09-26. The attached universal installer is arm64 + x86_64, ad-hoc signed, and explicitly unnotarized because the release Mac has no Developer ID signing identity. SHA-256: `19c9c5e3b3d9980c35cd813550b9ae9176dfb195e678e1c1c53faca63a402274`.
-Next unfinished item: V0.4.0 is released. Any subsequent backup/restore enhancement belongs to V0.4 maintenance or a new milestone.
+Current branch: main
+Current release: mixtype-v0.4.0
+Release tag commit: 1d12509c
+Release asset: MixType-macOS-mixtype-v0.4.0-unnotarized.zip
+Release SHA-256: 19c9c5e3b3d9980c35cd813550b9ae9176dfb195e678e1c1c53faca63a402274
+Release signing: universal arm64 + x86_64; ad-hoc signed; explicitly unnotarized because no Developer ID signing identity is available on the release Mac
+Completed: V0.1 Hybrid; V0.2 Personal Lexicon / adaptive learning; V0.3 mixed-token routing; V0.4 portable complete backup / restore
+V0.4 backup contents: portable preferences; active CIN/cassette; CHT/CHS Personal Lexicon; promotion/composition pending data; single-character preferences; user phrases/filters/replacements/associates/symbols
+V0.4 portability: old CassettePath and UserDataFolderSpecified absolute paths are excluded; restore relocates CIN and portable data to the new Mac
+V0.4 restore safety: schema validation, versioned-learning validation, exact known-role replacement, rollback snapshots, malformed-package fail-closed behavior, explicit UI confirmation
+Tests: full LibVanguard PASS; SettingsUI 18/18 PASS; MainAssembly 43/43 PASS; four localization files lint PASS; make debug PASS; git diff --check PASS
+Real-Mac acceptance: server2026 PASS; jintianmeetinggai → 今天meeting改 PASS; private-CIN s. → ？ PASS; V0.4 real backup export PASS
+Backup export audit: schema v1; correct product identifier; CHT/CHS modes present; active CIN present; preferences and versioned-learning JSON valid; no old absolute cassette/user-data paths
+Runtime install: strict codesign PASS; OpenVanilla preserved; 15 known private/portable data-file hashes unchanged across the final V0.4 Debug install
+Privacy: no private CIN, Personal Lexicon, learning data, or exported .mixtypebackup file is committed or attached to releases
+Known limitations: schema v1 intentionally excludes transient POM/perception memory; .mixtypebackup is selected through Settings and is not registered as a Finder document type; public release is not Apple-notarized
+Next unfinished item: none for v0.4.0. New work should start as a maintenance release or a new milestone after reconciliation from main.
 ```

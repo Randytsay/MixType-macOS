@@ -1,3 +1,37 @@
+MixType Release History
+=======================
+
+MixType v0.4.0 — 2026-09-26
+----------------------------------------
+
+- Added versioned portable `.mixtypebackup` complete backup / restore.
+- Backup includes portable preferences, active CIN/cassette, CHT/CHS Personal Lexicon,
+  promotion/composition pending learning data, single-character preferences, user phrases,
+  filters, replacements, associated phrases, and custom symbols.
+- Restore relocates CIN and user data to the new Mac's local paths rather than preserving
+  old absolute paths.
+- Added validation, rollback, fail-closed malformed-package handling, and exact restore
+  semantics for known portable roles.
+- Added SwiftUI and Cocoa Backup / Restore UI with explicit replacement confirmation.
+- Fixed Preferences being permanently forced above Save/Open panels and other apps.
+- Fixed duplicate `.mixtypebackup.mixtypebackup` suggested filenames.
+- Real-Mac export acceptance passed; release contains no private backup/CIN/learning data.
+
+MixType v0.3.0 — 2026-09-26
+----------------------------------------
+
+- Completed Hybrid CIN + Pinyin routing and graduated mixed-token routing to default-on.
+- Added Personal Lexicon, full-Pinyin / initials / mixed-prefix lookup and adaptive learning.
+- Added single-character preference learning and composition phrase learning.
+- Added continuous Chinese-Pinyin / English mixed candidates such as
+  `jintianmeetinggai → 今天meeting改`.
+- Added protected ASCII handling for model names, identifiers, e-mail, URLs and
+  digit-leading units/time such as `server2026`, `MacBookM6`, `3pm`, `20kW`, and `300RT`.
+- Preserved valid CIN punctuation-code precedence such as `s. → ？`.
+
+Upstream vChewing changelog
+===========================
+
 https://gitee.com/vchewing/vChewing-macOS/wikis/sort_id=5401886
 
 Please read the CHANGELOG through the wiki link above since it will be a disaster to use Git to manage it together with other files in this repo.

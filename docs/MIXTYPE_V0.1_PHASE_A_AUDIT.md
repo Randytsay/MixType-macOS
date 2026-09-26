@@ -1,5 +1,7 @@
 # MixType V0.1 Phase A Read-Only Implementation Audit
 
+> **Historical audit.** Phase A and the later V0.1 milestone have been implemented and accepted. For current status, see `docs/DEVELOPMENT_STATUS.md`.
+
 Date: 2026-09-25  
 Audited baseline: `main@8c8b77f251b64ac811664dfd39a4ff90a47303f5`
 
