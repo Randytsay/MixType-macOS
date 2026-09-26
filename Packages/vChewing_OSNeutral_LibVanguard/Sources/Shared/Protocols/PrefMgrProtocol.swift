@@ -91,6 +91,7 @@ public protocol PrefMgrProtocol {
   var mixTypeAutoPromotionEnabled: Bool { get set }
   var mixTypeAutoPromotionThreshold: Int { get set }
   var mixTypeEnglishIntentEnabled: Bool { get set }
+  var mixTypeMixedTokenSegmentationEnabled: Bool { get set }
   var mixedAlphanumericalEnabled: Bool { get set }
   var mixedAlnumJudgeReadingsBySequentialRawKeyOrder: Bool { get set }
   var enableLatchedAlnumStateInMixedAlnumMode: Bool { get set }

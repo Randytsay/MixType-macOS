@@ -60,6 +60,7 @@ public enum UserDef: String, CaseIterable, Identifiable, Sendable {
   case kMixTypeAutoPromotionEnabled = "MixTypeAutoPromotionEnabled"
   case kMixTypeAutoPromotionThreshold = "MixTypeAutoPromotionThreshold"
   case kMixTypeEnglishIntentEnabled = "MixTypeEnglishIntentEnabled"
+  case kMixTypeMixedTokenSegmentationEnabled = "MixTypeMixedTokenSegmentationEnabled"
   case kMixedAlphanumericalEnabled = "MixedAlphanumericalEnabled"
   case kMixedAlnumJudgeReadingsBySequentialRawKeyOrder = "MixedAlnumJudgeReadingsBySequentialRawKeyOrder"
   case kEnableLatchedAlnumStateInMixedAlnumMode = "EnableLatchedAlnumStateInMixedAlnumMode"
@@ -673,6 +674,7 @@ extension UserDef {
     case .kMixTypeAutoPromotionEnabled: return .bool(true)
     case .kMixTypeAutoPromotionThreshold: return .integer(3)
     case .kMixTypeEnglishIntentEnabled: return .bool(true)
+    case .kMixTypeMixedTokenSegmentationEnabled: return .bool(false)
     case .kMixedAlphanumericalEnabled: return .bool(false)
     case .kMixedAlnumJudgeReadingsBySequentialRawKeyOrder: return .bool(true)
     case .kEnableLatchedAlnumStateInMixedAlnumMode: return .bool(false)
@@ -981,6 +983,10 @@ extension UserDef {
         userDef: self,
         shortTitle: "i18n:UserDef.kMixTypeEnglishIntentEnabled.shortTitle",
         description: "i18n:UserDef.kMixTypeEnglishIntentEnabled.description"
+      )
+    case .kMixTypeMixedTokenSegmentationEnabled: return .init(
+        userDef: self,
+        shortTitle: "MixType mixed-token segmentation"
       )
     case .kMixedAlphanumericalEnabled: return .init(
         userDef: self,

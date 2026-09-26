@@ -437,6 +437,9 @@ public final class PrefMgr: PrefMgrProtocol, Sendable {
   @AppProperty(userDef: .kMixTypeEnglishIntentEnabled)
   public var mixTypeEnglishIntentEnabled: Bool
 
+  @AppProperty(userDef: .kMixTypeMixedTokenSegmentationEnabled)
+  public var mixTypeMixedTokenSegmentationEnabled: Bool
+
   @AppProperty(userDef: .kSuppressFactoryUnigramsOfKanaSyllables)
   public var suppressFactoryUnigramsOfKanaSyllables: Bool {
     didSet { didAskForSyncingLMPrefs?() }

@@ -1586,6 +1586,100 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(initialsOffer.source == .personalInitials)
   }
 
+  @Test
+  func test_IH533_MixedTokenSegmentationDefaultsOffAndKeepsV02ShiftBehavior() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+    defer {
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    #expect(!testHandler.prefs.mixTypeMixedTokenSegmentationEnabled)
+
+    let shiftM = KBEvent.KeyEventData(
+      flags: .shift, chars: "M", charsSansModifiers: "m", keyCode: 46
+    ).asEvent
+    #expect(testHandler.triageInput(event: shiftM))
+    #expect(testSession.recentCommissions.joined() == "M")
+    #expect(testHandler.calligrapher.isEmpty)
+  }
+
+  @Test(arguments: [
+    "MacBookM6",
+    "ABC123",
+    "server2026",
+    "SOC80%",
+  ])
+  func test_IH534_MixedTokenSegmentationProtectsCaseAndAlnumTokens(token: String) throws {
+    try verifyProtectedMixedToken(token)
+  }
+
+  @Test(arguments: [
+    "email@example.com",
+    "https://example.com/path?q=1",
+  ])
+  func test_IH535_MixedTokenSegmentationProtectsEmailAndURLTokens(token: String) throws {
+    try verifyProtectedMixedToken(token)
+  }
+
+  private func verifyProtectedMixedToken(_ token: String) throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    defer {
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    testHandler.clear()
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+
+    for char in token {
+      let text = String(char)
+      let event: KBEvent
+      if char.isUppercase {
+        event = KBEvent.KeyEventData(
+          flags: .shift,
+          chars: text,
+          charsSansModifiers: text.lowercased(),
+          keyCode: mapKeyCodesANSIForTests[text.lowercased()] ?? 65_535
+        ).asEvent
+      } else if let shiftedBase = ["@": "2", ":": ";", "%": "5", "?": "/", "&": "7", "=": "0", "#": "3", "+": "="][text] {
+        event = KBEvent.KeyEventData(
+          flags: .shift,
+          chars: text,
+          charsSansModifiers: shiftedBase,
+          keyCode: mapKeyCodesANSIForTests[shiftedBase] ?? 65_535
+        ).asEvent
+      } else {
+        event = KBEvent.KeyEventData(chars: text).asEvent
+      }
+      #expect(testHandler.triageInput(event: event), "Hybrid rejected protected token char \(text) in \(token)")
+    }
+
+    #expect(testHandler.calligrapher == token)
+    #expect(testSession.state.candidates.isEmpty)
+
+    #expect(testHandler.triageInput(event: KBEvent.KeyEventData(chars: " ").asEvent))
+    #expect(testSession.recentCommissions.joined() == token + " ")
+    #expect(testHandler.calligrapher.isEmpty)
+  }
+
   private func verifyNativePhoneticPersonalLexicon(
     parser: KeyboardParser,
     expectedProvider: Shared.MixTypeBaseInputProvider

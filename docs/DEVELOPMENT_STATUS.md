@@ -4,7 +4,7 @@ This file is the canonical handoff/status record for active MixType development.
 
 ## Current milestone
 
-**V0.2 — Personal Lexicon + ASCII fallback — acceptance complete**
+**V0.3 — mixed-token segmentation**
 
 Specifications:
 
@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.2 acceptance complete — code, persistence, learning quality, phrase composition, and final Mac sanity validated**
+**V0.3 Phase A — protected ASCII token routing behind a default-off feature flag**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -35,6 +35,13 @@ Final hardening adds a threshold-time factory-reading validation gate: existing 
 auto-promote with an exact reading chain that the factory itself supports, while genuinely new phrases
 remain learnable from their actual composition readings. The check is lazy-cached and invalidated whenever
 the factory dictionary reloads, so it does not enter the per-key hot path.
+
+V0.3 Phase A keeps the accepted Hybrid typewriter as the single authoritative event route. Batch 1 adds
+a default-off `MixTypeMixedTokenSegmentationEnabled` preference and deterministic protected-ASCII handling
+inside that route only. Case-sensitive model names / acronyms, English+digit tokens, e-mail addresses, URLs,
+and common URL/unit punctuation can remain in the Hybrid raw buffer without being split by Shift-ASCII or
+accidental Chinese-candidate routing. With the flag off, V0.2 behavior is unchanged. Chinese↔ASCII adjacency
+segmentation and digit-leading units/time tokens remain subsequent V0.3 work.
 
 ## Repository state
 
@@ -60,7 +67,7 @@ the factory dictionary reloads, so it does not enter the per-key hot path.
 - local factory reading resolution + Tekkon Pinyin-key generation: ✅
 - atomic macOS persistence under the existing user-data directory: ✅
 - zero-candidate ASCII fallback, including prior Chinese composition: ✅
-- Shift-produced printable ASCII is handled before candidate selection (`Shift+2 → @`, `Shift+/ → ?`, uppercase letters): ✅ code/tests; installed-Mac E2E pending
+- Shift-produced printable ASCII is handled before candidate selection (`Shift+2 → @`, `Shift+/ → ?`, uppercase letters): ✅ code/tests + installed-Mac validation
 - Explicit English override in Hybrid: `Enter` commits the raw token, `Shift+Space` commits raw token + half-width space even when Chinese candidates exist: ✅
 - Personal Lexicon activation safety-net reload for empty runtime stores with persisted JSON: ✅
 - Multiple Personal Lexicon entries may share the same full/initials key; actual selection increments `selectionCount`, updates `lastUsedAt`, reorders peers, and persists immediately: ✅
@@ -94,6 +101,10 @@ the factory dictionary reloads, so it does not enter the per-key hot path.
 - auto-promotion threshold factory-reading gate rejects unsupported readings for known factory phrases while preserving legitimate multi-reading variants: ✅
 - exact-reading lookup is lazy-cached and cache invalidates on factory reload: ✅
 - final sequential-selection acceptance: `wei → 韋`, then `hong → 宏`, commit `韋宏` three times ⇒ Personal `weihong / wh`: ✅
+- V0.3 Phase A Batch 1 default-off mixed-token feature flag: ✅ code + focused regression
+- protected ASCII token routing in the existing Hybrid typewriter (no second typewriter / no LLM / no network): ✅
+- case-sensitive / alphanumeric token preservation (`MacBookM6`, `ABC123`, `server2026`, `SOC80%`): ✅ focused regression
+- e-mail / URL token preservation (`email@example.com`, `https://example.com/path?q=1`): ✅ focused regression
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -130,7 +141,7 @@ the factory dictionary reloads, so it does not enter the per-key hot path.
 1. V0.2 final hardening build installation: ✅ complete with strict codesign verification and private runtime data preserved.
 2. Final Mac sanity: ✅ complete. Existing real-Mac evidence already covers Shift-ASCII / explicit English override; the final provider-state pass verified Zhuyin → Pinyin → CIN transitions against the installed input source and restored the original CIN/Hybrid preferences afterward.
 3. Learned runtime data sanity: ✅ `韋宏 = weihong / wh`, `過來一下 = guolaiyixia / glyx`, and the learned `耀` single-character preference remain persisted after the final hardening install.
-4. V0.2 is acceptance complete. Continue with V0.3 mixed-token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens).
+4. V0.2 is acceptance complete. V0.3 Phase A Batch 1 has passed the full validation gate; after commit/push, continue adjacent Chinese/ASCII boundary segmentation and digit-leading unit/time cases.
 
 ## V0.2 implementation status
 
@@ -172,7 +183,11 @@ the factory dictionary reloads, so it does not enter the per-key hot path.
 - [x] legitimate factory multi-reading variants remain promotable
 - [x] exact-reading validation cache + factory-reload invalidation
 - [x] sequential single-character composition regression (`wei → 韋`, `hong → 宏` ×3 ⇒ `weihong / wh`)
-- [ ] broader V0.3 English/Chinese token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens)
+- [x] V0.3 default-off mixed-token routing flag
+- [x] V0.3 protected ASCII model/acronym/alphanumeric tokens
+- [x] V0.3 protected e-mail / URL tokens
+- [ ] V0.3 adjacent Chinese ↔ ASCII automatic segmentation
+- [ ] V0.3 digit-leading unit/time tokens (`3pm`, `20kW`, `300RT`) as one deterministic mixed-token flow
 
 ## V0.1 phase checklist
 
@@ -385,12 +400,12 @@ PASS, and `make debug` passes.
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
-Current branch: feat/personal-lexicon-v02
-Latest commit: c16a27fa
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow; exact-commit composition phrase learning with independent pending persistence; bounded N-best full-Pinyin composition fallback; threshold-time factory-reading promotion validation; sequential character-to-phrase acceptance
-Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 28/28 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
+Current branch: feat/mixed-token-v03
+Latest accepted V0.2 commit: 39ef9129
+Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batch 1 protected ASCII token routing implemented behind a default-off flag with focused coverage for model/acronym/alphanumeric/e-mail/URL tokens
+Tests: V0.3 Batch 1 full LibVanguard package tests PASS (including IH533-IH535); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS; `make debug` PASS; `git diff --check` PASS.
 CI: no GitHub Actions run observed for the latest V0.2 feature work
 Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin, composition-learning, composed-Pinyin N-best, and final learning-quality hardening builds installed with strict codesign verification; existing Personal / explicit-promotion pending / composition pending / single-character preference / private CIN data all preserved
-Known issues: no remaining V0.2 acceptance blocker. Full mixed-token segmentation is intentionally V0.3 scope.
-Next unfinished item: start V0.3 Phase A mixed-token segmentation while preserving the accepted V0.2 routing and learning behavior
+Known issues: no V0.2 blocker. V0.3 Batch 1 intentionally does not yet solve automatic Chinese↔ASCII adjacency or digit-leading unit/time segmentation.
+Next unfinished item: validate/commit/push V0.3 Phase A Batch 1, then implement deterministic adjacent-token boundary handling in the same Hybrid route
 ```

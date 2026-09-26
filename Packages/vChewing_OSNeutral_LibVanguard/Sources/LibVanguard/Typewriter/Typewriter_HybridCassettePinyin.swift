@@ -44,6 +44,11 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
     // 若前方仍有尚未確認的 Hybrid raw token（例如 `space`），一律按原樣提交為 ASCII，
     // 不因碰巧存在中文候選而自動選字；已經明確進入 Homa 的中文則照常先提交。
     if let shiftedASCII = resolveShiftedPrintableASCII(input) {
+      if shouldBufferMixedTokenCharacter(shiftedASCII) {
+        handler.calligrapher.append(shiftedASCII)
+        refreshState(session: session)
+        return true
+      }
       let textToCommit = handler.committableDisplayText(sansReading: true)
         + handler.calligrapher
         + shiftedASCII
@@ -112,6 +117,12 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
         || input.isControlHeld || input.isOptionHeld || input.isCommandHeld
     guard !skipRawHandling else { return nil }
 
+    if let mixedTokenCharacter = resolveMixedTokenCharacter(input) {
+      handler.calligrapher.append(mixedTokenCharacter)
+      refreshState(session: session)
+      return true
+    }
+
     let rawInput = (input.inputTextIgnoringModifiers ?? input.text).lowercased()
     guard rawInput.count == 1 else { return nil }
 
@@ -168,6 +179,75 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
     return visibleText
   }
 
+  /// V0.3 Phase A 的 deterministic ASCII-token gate。
+  ///
+  /// 只在 feature flag 開啟時生效；flag 關閉時完全沿用 V0.2 的 Shift-ASCII / raw-key routing。
+  /// 一旦 token 出現大小寫、數字或 email/URL/unit 常見符號，就視為「受保護 ASCII token」，
+  /// 後續 ASCII 字元不再送往 CIN/Pinyin 候選查詢。
+  private func shouldBufferMixedTokenCharacter(_ character: String) -> Bool {
+    guard handler.prefs.mixTypeMixedTokenSegmentationEnabled,
+          isSinglePrintableASCII(character),
+          character != " "
+    else {
+      return false
+    }
+    if isProtectedMixedToken(handler.calligrapher) { return true }
+    if character.first?.isUppercase == true { return true }
+    guard !handler.calligrapher.isEmpty else { return false }
+    return mixedTokenSyntaxCharacters.contains(character)
+  }
+
+  /// 處理沒有 Shift 的 ASCII token 延伸，例如 `MacBookM6` 的一般字母/數字、
+  /// `email@example.com` 的 `.`、以及 URL 的 `/`。
+  private func resolveMixedTokenCharacter(_ input: some InputSignalProtocol) -> String? {
+    guard handler.prefs.mixTypeMixedTokenSegmentationEnabled,
+          !input.isShiftHeld
+    else {
+      return nil
+    }
+    let visible = input.text.applyingTransformFW2HW(reverse: false)
+    guard isSinglePrintableASCII(visible), visible != " " else { return nil }
+
+    if isProtectedMixedToken(handler.calligrapher) {
+      return visible
+    }
+    if visible.first?.isUppercase == true {
+      return visible
+    }
+    if visible.first?.isNumber == true,
+       MixTypeEnglishIntent.looksLikeEnglishWord(handler.calligrapher) {
+      return visible
+    }
+    guard !handler.calligrapher.isEmpty,
+          mixedTokenSyntaxCharacters.contains(visible)
+    else {
+      return nil
+    }
+    return visible
+  }
+
+  private var mixedTokenSyntaxCharacters: Set<String> {
+    Set(["@", ":", "/", ".", "_", "-", "+", "%", "?", "&", "=", "#", "~"])
+  }
+
+  private func isProtectedMixedToken(_ text: String) -> Bool {
+    if text.unicodeScalars.contains(where: { scalar in
+      guard scalar.isASCII else { return false }
+      if (65 ... 90).contains(scalar.value) { return true }
+      return mixedTokenSyntaxCharacters.contains(String(scalar))
+    }) {
+      return true
+    }
+    guard let firstDigit = text.firstIndex(where: \.isNumber) else { return false }
+    return MixTypeEnglishIntent.looksLikeEnglishWord(String(text[..<firstDigit]))
+  }
+
+  private func isSinglePrintableASCII(_ text: String) -> Bool {
+    let scalars = text.unicodeScalars
+    guard scalars.count == 1, let scalar = scalars.first else { return false }
+    return scalar.isASCII && (0x21 ... 0x7E).contains(scalar.value)
+  }
+
   private func refreshState(session: Handler.Session) {
     if handler.calligrapher.isEmpty {
       if handler.assembler.isEmpty {
@@ -177,7 +257,10 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
       }
       return
     }
-    let offers = handler.hybridCandidateOffers(for: handler.calligrapher)
+    let offers = isProtectedMixedToken(handler.calligrapher)
+      && handler.prefs.mixTypeMixedTokenSegmentationEnabled
+      ? []
+      : handler.hybridCandidateOffers(for: handler.calligrapher)
     var state = handler.generateStateOfInputting(guarded: true)
     state.candidates = offers.map(\.candidate)
     session.switchState(state)
