@@ -46,6 +46,9 @@ public protocol InputHandlerProtocol: AnyObject {
 
   var strCodePointBuffer: String { get set } // 內碼輸入專用組碼區
   var calligrapher: String { get set } // 磁帶專用組筆區
+  /// V0.3 mixed-token：已直接 passthrough 給 client 的連續前導數字。
+  /// 僅供下一段 ASCII/unit suffix 判斷，絕不再次提交，避免數字重複。
+  var mixTypePassthroughNumericPrefix: String { get set }
   var mixedAlnumConfig: MixedAlnumConfig { get set } // 中英混打模式之執行期狀態
   var furiousConfig: FuriousTypingConfig { get set } // 狂拼模式之執行期狀態
   var composer: Tekkon.Composer { get set } // 注拼槽
@@ -506,6 +509,7 @@ extension InputHandlerProtocol {
 
   public func clearComposerAndCalligrapher() {
     calligrapher.removeAll()
+    mixTypePassthroughNumericPrefix.removeAll()
     composer.clear()
     // 僅重設內容：閂滯旗標之生命週期與緩衝區不同（見 `MixedAlnumConfig` 之註解）。
     mixedAlnumConfig.resetContent()

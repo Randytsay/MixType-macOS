@@ -1742,6 +1742,201 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(testSession.recentCommissions.isEmpty)
   }
 
+  @Test(arguments: [
+    (token: "3pm", numericPrefix: "3", suffix: "pm"),
+    (token: "20kW", numericPrefix: "20", suffix: "kW"),
+    (token: "300RT", numericPrefix: "300", suffix: "RT"),
+  ])
+  func test_IH538_MixedTokenSegmentationKeepsDigitLeadingUnitAndTimeTokensLiteral(
+    scenario: (token: String, numericPrefix: String, suffix: String)
+  ) throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    defer {
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testHandler.clear()
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    var clientPassthrough = ""
+    for char in scenario.token {
+      let text = String(char)
+      let event: KBEvent
+      if char.isUppercase {
+        event = KBEvent.KeyEventData(
+          flags: .shift,
+          chars: text,
+          charsSansModifiers: text.lowercased(),
+          keyCode: mapKeyCodesANSIForTests[text.lowercased()] ?? 65_535
+        ).asEvent
+      } else {
+        event = KBEvent.KeyEventData(chars: text).asEvent
+      }
+      if !testHandler.triageInput(event: event) {
+        clientPassthrough += text
+      }
+    }
+
+    #expect(clientPassthrough == scenario.numericPrefix)
+    #expect(testHandler.mixTypePassthroughNumericPrefix == scenario.numericPrefix)
+    #expect(testHandler.calligrapher == scenario.suffix)
+    #expect(testSession.state.candidates.isEmpty)
+
+    #expect(testHandler.triageInput(event: KBEvent.KeyEventData(chars: " ").asEvent))
+    #expect(clientPassthrough + testSession.recentCommissions.joined() == scenario.token + " ")
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.mixTypePassthroughNumericPrefix.isEmpty)
+  }
+
+  @Test
+  func test_IH539_MixedTokenSegmentationHandlesChineseEnglishChineseThenDigitTime() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    [
+      Homa.Gram(keyArray: ["ㄐㄧㄣ"], value: "今", score: 20),
+      Homa.Gram(keyArray: ["ㄊㄧㄢ"], value: "天", score: 20),
+      Homa.Gram(keyArray: ["ㄐㄧㄣ", "ㄊㄧㄢ"], value: "今天", score: 100),
+      Homa.Gram(keyArray: ["ㄍㄞˇ"], value: "改", score: 100),
+    ].forEach {
+      testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false)
+    }
+
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("jintian")
+    let todayIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "今天" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: todayIndex)
+
+    typeSentence("meetinggai")
+    #expect(testSession.recentCommissions.joined() == "今天meeting")
+    let changeIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "改" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: changeIndex)
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["改"])
+
+    let digitHandled = testHandler.triageInput(event: KBEvent.KeyEventData(chars: "3").asEvent)
+    #expect(!digitHandled)
+    #expect(testSession.recentCommissions == ["今天", "meeting", "改"])
+    #expect(testHandler.mixTypePassthroughNumericPrefix == "3")
+    #expect(testHandler.assembler.isEmpty)
+
+    typeSentence("pm")
+    #expect(testHandler.calligrapher == "pm")
+    #expect(testSession.state.candidates.isEmpty)
+
+    #expect(testHandler.triageInput(event: KBEvent.KeyEventData.dataEnterReturn.asEvent))
+    #expect(testSession.recentCommissions == ["今天", "meeting", "改", "pm"])
+    #expect(testHandler.mixTypePassthroughNumericPrefix.isEmpty)
+
+    // The real client receives the unhandled "3" between the second and third IME commits.
+    let reconstructedClientText =
+      testSession.recentCommissions[0]
+        + testSession.recentCommissions[1]
+        + testSession.recentCommissions[2]
+        + "3"
+        + testSession.recentCommissions[3]
+    #expect(reconstructedClientText == "今天meeting改3pm")
+  }
+
+  @Test
+  func test_IH540_DigitPrefixDoesNotForceFollowingValidPinyinToASCII() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    defer {
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+    [
+      Homa.Gram(keyArray: ["ㄋㄧˇ"], value: "你", score: 20),
+      Homa.Gram(keyArray: ["ㄏㄠˇ"], value: "好", score: 20),
+      Homa.Gram(keyArray: ["ㄋㄧˇ", "ㄏㄠˇ"], value: "你好", score: 100),
+    ].forEach {
+      testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false)
+    }
+
+    #expect(!testHandler.triageInput(event: KBEvent.KeyEventData(chars: "3").asEvent))
+    #expect(testHandler.mixTypePassthroughNumericPrefix == "3")
+
+    typeSentence("nihao")
+    #expect(testHandler.calligrapher == "nihao")
+    let helloIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "你好" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: helloIndex)
+
+    #expect(testHandler.mixTypePassthroughNumericPrefix.isEmpty)
+    #expect(testHandler.assembler.assembledSentence.map(\.value) == ["你好"])
+    #expect(testHandler.triageInput(event: KBEvent.KeyEventData.dataEnterReturn.asEvent))
+    #expect("3" + testSession.recentCommissions.joined() == "3你好")
+  }
+
   private func verifyProtectedMixedToken(_ token: String) throws {
     guard let testHandler, let testSession else {
       Issue.record("Test handler or session is nil.")

@@ -176,6 +176,8 @@ extension InputHandlerProtocol {
       return nil
     }
     let canonicalCandidate = offer.candidate
+    // 若前方數字已 passthrough，使用者現在明確選了中文候選，代表數字 token 邊界到此結束。
+    mixTypePassthroughNumericPrefix.removeAll()
 
     switch offer.source {
     case .cassetteExact, .cassetteQuick:

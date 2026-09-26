@@ -59,6 +59,7 @@ public final class MockInputHandler: @MainActor InputHandlerProtocol {
 
   public var strCodePointBuffer = ""
   public var calligrapher = ""
+  public var mixTypePassthroughNumericPrefix = ""
   public var mixedAlnumConfig = MixedAlnumConfig()
   public var furiousConfig = FuriousTypingConfig() // 狂拼模式之執行期狀態
   public var composer: Tekkon.Composer = .init()

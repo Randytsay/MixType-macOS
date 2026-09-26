@@ -23,6 +23,8 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
   public func handle(_ input: some InputSignalProtocol) -> Bool? {
     guard let session = handler.session else { return nil }
 
+    maintainNumericPassthroughContext(input)
+
     if input.isBackSpace, !handler.calligrapher.isEmpty {
       if input.commonKeyModifierFlags == .option {
         handler.calligrapher.removeAll()
@@ -129,14 +131,26 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
     let rawInput = (input.inputTextIgnoringModifiers ?? input.text).lowercased()
     guard rawInput.count == 1 else { return nil }
 
-    // 空白狀態下，普通數字預設交還 client。只有磁帶真的存在以該數字開頭的碼時，
-    // 才把它視為 CIN raw key。如此可避免 Hybrid/Pinyin 把單獨的 0...9 當聲調或字根吞掉。
+    // 空白 raw buffer 下，普通數字預設交還 client。只有磁帶真的存在以該數字開頭的碼時，
+    // 才把它視為 CIN raw key。V0.3 flag 開啟時，額外只記住「已 passthrough」的數字 context，
+    // 供後續 `3pm / 20kW / 300RT` suffix 判斷；數字本身絕不再次提交。
     if input.isMainAreaNumKey,
        input.commonKeyModifierFlags.isEmpty,
        handler.calligrapher.isEmpty,
-       handler.assembler.isEmpty,
        !handler.currentLM.lxQuerier.cassetteHasKeyPrefix(rawInput) {
-      return false
+      if handler.prefs.mixTypeMixedTokenSegmentationEnabled {
+        if !handler.assembler.isEmpty {
+          let priorChineseText = handler.committableDisplayText(sansReading: true)
+          if !priorChineseText.isEmpty {
+            session.switchState(.ofCommitting(textToCommit: priorChineseText))
+          }
+        }
+        handler.mixTypePassthroughNumericPrefix.append(rawInput)
+        return false
+      }
+      // Feature flag OFF 時完全維持 V0.2：只有 assembler 空白才直接 passthrough；
+      // 已有中文組字時自然落回下方既有 CIN/Pinyin key routing。
+      if handler.assembler.isEmpty { return false }
     }
 
     let isCassetteKey = handler.currentLM.isThisCassetteKeyAllowed(key: rawInput)
@@ -252,6 +266,41 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
     let scalars = text.unicodeScalars
     guard scalars.count == 1, let scalar = scalars.first else { return false }
     return scalar.isASCII && (0x21 ... 0x7E).contains(scalar.value)
+  }
+
+  /// 清理只屬於「緊鄰前導數字」的 runtime context。
+  /// 數字已經交給 client，因此這裡只能忘記 context，不能提交或刪除任何數字。
+  private func maintainNumericPassthroughContext(_ input: some InputSignalProtocol) {
+    guard handler.prefs.mixTypeMixedTokenSegmentationEnabled else {
+      handler.mixTypePassthroughNumericPrefix.removeAll()
+      return
+    }
+    guard !handler.mixTypePassthroughNumericPrefix.isEmpty, handler.calligrapher.isEmpty else { return }
+
+    let visible = input.text.applyingTransformFW2HW(reverse: false)
+    let scalars = visible.unicodeScalars
+    let isSingleASCIIAlnum = scalars.count == 1 && scalars.allSatisfy { scalar in
+      scalar.isASCII
+        && ((0x30 ... 0x39).contains(scalar.value)
+          || (0x41 ... 0x5A).contains(scalar.value)
+          || (0x61 ... 0x7A).contains(scalar.value))
+    }
+    if !isSingleASCIIAlnum {
+      handler.mixTypePassthroughNumericPrefix.removeAll()
+    }
+  }
+
+  private func isRecognizedDigitLeadingMixedTokenSuffix(_ suffix: String) -> Bool {
+    let numericPrefix = handler.mixTypePassthroughNumericPrefix
+    guard !numericPrefix.isEmpty, numericPrefix.allSatisfy(\.isNumber) else { return false }
+    let recognizedSuffixes: Set<String> = [
+      "am", "pm",
+      "W", "kW", "MW", "GW", "Wh", "kWh", "MWh", "GWh",
+      "RT", "Hz", "kHz", "MHz", "GHz",
+      "V", "kV", "A", "mA", "kA",
+      "VA", "kVA", "MVA", "VAR", "kVAR", "MVAR",
+    ]
+    return recognizedSuffixes.contains(suffix)
   }
 
   /// V0.3 Phase A Batch 2：把「確定的 ASCII prefix + 可完整查到中文的 Pinyin suffix」
@@ -372,8 +421,10 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
       }
       return
     }
-    let offers = isProtectedMixedToken(handler.calligrapher)
-      && handler.prefs.mixTypeMixedTokenSegmentationEnabled
+    let shouldProtectASCII = handler.prefs.mixTypeMixedTokenSegmentationEnabled
+      && (isProtectedMixedToken(handler.calligrapher)
+        || isRecognizedDigitLeadingMixedTokenSuffix(handler.calligrapher))
+    let offers = shouldProtectASCII
       ? []
       : handler.hybridCandidateOffers(for: handler.calligrapher)
     var state = handler.generateStateOfInputting(guarded: true)

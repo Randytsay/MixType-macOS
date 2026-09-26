@@ -62,6 +62,7 @@ public final class InputHandler: InputHandlerProtocol {
 
   public var strCodePointBuffer = "" // 內碼輸入專用組碼區
   public var calligrapher = "" // 磁帶專用組筆區
+  public var mixTypePassthroughNumericPrefix = "" // V0.3 mixed-token 前導數字 context
   public var mixedAlnumConfig = MixedAlnumConfig() // 中英混打模式之執行期狀態
   public var furiousConfig = FuriousTypingConfig() // 狂拼模式之執行期狀態
   public var composer: Composer = .init() // 注拼槽
