@@ -735,6 +735,151 @@ final class LXMgrTests {
     #expect(invalidFacade.personalLexiconEntries.isEmpty)
   }
 
+  @Test
+  func test037_LXMgr_MixTypeBackupRoundTripUsesPortableLocalPaths() throws {
+    let fileManager = FileManager.default
+    let mode = Shared.InputMode.imeModeCHT
+    let sourceDataFolder = LXMgr.dataFolderPath(isDefaultFolder: false)
+    let restoredDataFolder = LXMgr.dataFolderPath(isDefaultFolder: true)
+    let sourcePersonalURL = LXMgr.personalLexiconDataURL(mode: mode, basePath: sourceDataFolder)
+    let restoredPersonalURL = LXMgr.personalLexiconDataURL(mode: mode, basePath: restoredDataFolder)
+    let sourcePhraseURL = LXMgr.userDictDataURL(
+      mode: mode,
+      type: .thePhrases,
+      basePath: sourceDataFolder
+    )
+    let restoredPhraseURL = LXMgr.userDictDataURL(
+      mode: mode,
+      type: .thePhrases,
+      basePath: restoredDataFolder
+    )
+    let externalCassetteURL = LXMgr.unitTestDataURL(isDefaultFolder: false)
+      .appendingPathComponent("portable-(UUID().uuidString).cin")
+    let restoredCassetteURL = LXMgr.cassetteCacheDirectoryURL
+      .appendingPathComponent(externalCassetteURL.lastPathComponent)
+    let backupURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("MixType-(UUID().uuidString).mixtypebackup")
+    let preferenceKey = UserDef.kMixTypeAutoPromotionThreshold.rawValue
+    let originalPreference = UserDefaults.current.object(forKey: preferenceKey)
+    let originalCassettePath = UserDefaults.current.object(forKey: UserDef.kCassettePath.rawValue)
+    let originalUserDataPath = UserDefaults.current.object(
+      forKey: UserDef.kUserDataFolderSpecified.rawValue
+    )
+
+    let fixedDate = Date(timeIntervalSince1970: 1_700_000_000)
+    let entry = LXAssembly.PersonalLexiconEntry(
+      phrase: "台達能源",
+      readings: ["ㄊㄞˊ", "ㄉㄚˊ", "ㄋㄥˊ", "ㄩㄢˊ"],
+      pinyinTokens: ["tai", "da", "neng", "yuan"],
+      fullPinyinKey: "taidanengyuan",
+      initialsKey: "tdny",
+      source: .manual,
+      createdAt: fixedDate,
+      updatedAt: fixedDate,
+      pinned: true
+    )
+    let cassetteFixture = """
+    %ename MixTypeBackup
+    %cname MixTypeBackup
+    %selkey 1234567890
+    %keyname begin
+    a a
+    %keyname end
+    %chardef begin
+    a 啊
+    %chardef end
+    """
+    let phraseFixture = "台達能源 ㄊㄞˊ-ㄉㄚˊ-ㄋㄥˊ-ㄩㄢˊ\n"
+
+    defer {
+      mode.lexicon.replacePersonalLexiconEntries([])
+      try? fileManager.removeItem(at: sourcePersonalURL)
+      try? fileManager.removeItem(at: restoredPersonalURL)
+      try? fileManager.removeItem(at: sourcePhraseURL)
+      try? fileManager.removeItem(at: restoredPhraseURL)
+      try? fileManager.removeItem(at: externalCassetteURL)
+      try? fileManager.removeItem(at: restoredCassetteURL)
+      try? fileManager.removeItem(at: backupURL)
+      if let originalPreference {
+        UserDefaults.current.set(originalPreference, forKey: preferenceKey)
+      } else {
+        UserDefaults.current.removeObject(forKey: preferenceKey)
+      }
+      if let originalCassettePath {
+        UserDefaults.current.set(originalCassettePath, forKey: UserDef.kCassettePath.rawValue)
+      } else {
+        UserDefaults.current.removeObject(forKey: UserDef.kCassettePath.rawValue)
+      }
+      if let originalUserDataPath {
+        UserDefaults.current.set(
+          originalUserDataPath,
+          forKey: UserDef.kUserDataFolderSpecified.rawValue
+        )
+      } else {
+        UserDefaults.current.removeObject(forKey: UserDef.kUserDataFolderSpecified.rawValue)
+      }
+      LXMgr.loadCassetteData()
+    }
+
+    try fileManager.createDirectory(
+      at: URL(fileURLWithPath: sourceDataFolder, isDirectory: true),
+      withIntermediateDirectories: true
+    )
+    mode.lexicon.replacePersonalLexiconEntries([entry])
+    try entryDocumentData([entry]).write(to: sourcePersonalURL, options: [.atomic])
+    try Data(phraseFixture.utf8).write(to: sourcePhraseURL, options: [.atomic])
+    try Data(cassetteFixture.utf8).write(to: externalCassetteURL, options: [.atomic])
+    UserDefaults.current.set(externalCassetteURL.path, forKey: UserDef.kCassettePath.rawValue)
+    UserDefaults.current.set(9, forKey: preferenceKey)
+
+    let exportSummary = try LXMgr.exportMixTypeBackup(to: backupURL)
+    #expect(exportSummary.hasCassette)
+    #expect(exportSummary.modeCount == 2)
+    #expect(fileManager.isReadableFile(atPath: backupURL.path))
+
+    // Simulate a new Mac: old absolute path and old user data no longer exist.
+    UserDefaults.current.set(2, forKey: preferenceKey)
+    UserDefaults.current.set("/old/mac/path/that/does/not/exist.cin", forKey: UserDef.kCassettePath.rawValue)
+    try fileManager.removeItem(at: externalCassetteURL)
+    try fileManager.removeItem(at: sourcePersonalURL)
+    try fileManager.removeItem(at: sourcePhraseURL)
+    mode.lexicon.replacePersonalLexiconEntries([])
+
+    let restoreSummary = try LXMgr.restoreMixTypeBackup(from: backupURL)
+    #expect(restoreSummary == exportSummary)
+    #expect(UserDefaults.current.integer(forKey: preferenceKey) == 9)
+    #expect(UserDefaults.current.string(forKey: UserDef.kUserDataFolderSpecified.rawValue) == "")
+    #expect(UserDefaults.current.string(forKey: UserDef.kCassettePath.rawValue) == restoredCassetteURL.path)
+    #expect(try Data(contentsOf: restoredCassetteURL) == Data(cassetteFixture.utf8))
+    #expect(try String(contentsOf: restoredPhraseURL, encoding: .utf8) == phraseFixture)
+
+    let restoredStore = LXAssembly.PersonalLexiconStore()
+    try restoredStore.load(data: Data(contentsOf: restoredPersonalURL))
+    #expect(restoredStore.entries == [entry])
+  }
+
+  @Test
+  func test038_LXMgr_InvalidMixTypeBackupFailsClosedWithoutChangingState() throws {
+    let fileManager = FileManager.default
+    let backupURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("Broken-(UUID().uuidString).mixtypebackup")
+    let preferenceKey = UserDef.kMixTypeAutoPromotionThreshold.rawValue
+    let oldValue = 7
+    UserDefaults.current.set(oldValue, forKey: preferenceKey)
+    defer {
+      try? fileManager.removeItem(at: backupURL)
+      UserDefaults.current.removeObject(forKey: preferenceKey)
+    }
+
+    try Data(#"{"schemaVersion":999,"productIdentifier":"org.randytsay.MixType.backup"}"#.utf8)
+      .write(to: backupURL, options: [.atomic])
+
+    #expect(throws: Error.self) {
+      try LXMgr.restoreMixTypeBackup(from: backupURL)
+    }
+    #expect(UserDefaults.current.integer(forKey: preferenceKey) == oldValue)
+  }
+
   // MARK: - 使用者資料遷移
 
   @Test
@@ -797,5 +942,9 @@ final class LXMgrTests {
     try FileManager.default.createDirectory(at: oldDir, withIntermediateDirectories: true)
     try FileManager.default.createDirectory(at: newDir, withIntermediateDirectories: true)
     return (oldDir, newDir)
+  }
+
+  private func entryDocumentData(_ entries: [LXAssembly.PersonalLexiconEntry]) throws -> Data {
+    try LXAssembly.PersonalLexiconStore(entries: entries).encode()
   }
 }
