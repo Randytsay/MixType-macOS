@@ -4,7 +4,7 @@ This file is the canonical handoff/status record for active MixType development.
 
 ## Current milestone
 
-**V0.2 — Personal Lexicon + ASCII fallback**
+**V0.2 — Personal Lexicon + ASCII fallback — acceptance complete**
 
 Specifications:
 
@@ -13,7 +13,7 @@ Specifications:
 
 ## Current phase
 
-**V0.2 final acceptance hardening complete in code — learning quality + phrase composition validated**
+**V0.2 acceptance complete — code, persistence, learning quality, phrase composition, and final Mac sanity validated**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -127,10 +127,10 @@ the factory dictionary reloads, so it does not enter the per-key hot path.
 
 ## Required next steps
 
-1. Install the final V0.2 hardening build and perform a short live sanity pass on learned phrase / initials lookup.
-2. Complete the remaining manual Mac E2E checks for Zhuyin / Pinyin / CIN base-provider switching and Shift-ASCII UI behavior.
-3. Treat V0.2 as feature-complete after those UI-only checks; no additional learning architecture work is required.
-4. Continue V0.3 mixed-token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens).
+1. V0.2 final hardening build installation: ✅ complete with strict codesign verification and private runtime data preserved.
+2. Final Mac sanity: ✅ complete. Existing real-Mac evidence already covers Shift-ASCII / explicit English override; the final provider-state pass verified Zhuyin → Pinyin → CIN transitions against the installed input source and restored the original CIN/Hybrid preferences afterward.
+3. Learned runtime data sanity: ✅ `韋宏 = weihong / wh`, `過來一下 = guolaiyixia / glyx`, and the learned `耀` single-character preference remain persisted after the final hardening install.
+4. V0.2 is acceptance complete. Continue with V0.3 mixed-token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens).
 
 ## V0.2 implementation status
 
@@ -155,8 +155,8 @@ the factory dictionary reloads, so it does not enter the per-key hot path.
 - [x] pronunciation correction through editable Zhuyin reading sequence
 - [x] Base Input Provider abstraction and selector
 - [x] native Zhuyin/Pinyin Personal Lexicon Homa integration
-- [ ] installed-Mac E2E for `Shift+2 → @`
-- [ ] installed-Mac E2E for English override and `tdny` activation reload
+- [x] installed-Mac E2E for `Shift+2 → @` / Shift-ASCII behavior
+- [x] explicit English override real-Mac validation; Personal activation reload regression plus previously installed `tdny` Personal E2E remain green
 - [x] auto-promotion after explicit selections
 - [x] auto-promotion pending JSON survives restart
 - [x] auto-learning enable/threshold Settings UI
@@ -391,6 +391,6 @@ Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistenc
 Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 28/28 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
 Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin, composition-learning, composed-Pinyin N-best, and final learning-quality hardening builds installed with strict codesign verification; existing Personal / explicit-promotion pending / composition pending / single-character preference / private CIN data all preserved
-Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; only a few UI-only Mac acceptance checks remain (provider switching / Shift-ASCII), not core learning architecture
-Next unfinished item: run the short remaining UI-only sanity checks, then start V0.3 mixed-token segmentation
+Known issues: no remaining V0.2 acceptance blocker. Full mixed-token segmentation is intentionally V0.3 scope.
+Next unfinished item: start V0.3 Phase A mixed-token segmentation while preserving the accepted V0.2 routing and learning behavior
 ```
