@@ -2102,6 +2102,53 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(!offers.contains { $0.source == .mixedSegmented })
   }
 
+  @Test
+  func test_IH545_CassettePunctuationCodeBeatsMixedTokenSyntax() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+
+    guard let cassetteURL = cassetteURLForTests("mixtype_punct", ext: "cin") else {
+      Issue.record("Unable to access mixtype_punct.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testHandler.clear()
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("s.")
+
+    #expect(testHandler.calligrapher == "s.")
+    #expect(testSession.recentCommissions.isEmpty)
+    let punctuationIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "？" })
+    )
+    #expect(punctuationIndex == 0)
+
+    testSession.candidatePairSelectionConfirmed(at: punctuationIndex)
+    #expect(testSession.recentCommissions == ["？"])
+    #expect(testHandler.calligrapher.isEmpty)
+  }
+
   private func verifyProtectedMixedToken(_ token: String) throws {
     guard let testHandler, let testSession else {
       Issue.record("Test handler or session is nil.")

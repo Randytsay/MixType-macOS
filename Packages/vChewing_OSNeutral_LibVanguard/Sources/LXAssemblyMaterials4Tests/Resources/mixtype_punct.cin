@@ -1,0 +1,11 @@
+# MixType regression fixture: punctuation is part of a legal CIN code.
+%ename MixTypePunct
+%cname MixTypePunct
+%selkey 1234567890
+%keyname begin
+s s
+. .
+%keyname end
+%chardef begin
+s. ？
+%chardef end

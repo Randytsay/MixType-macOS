@@ -228,6 +228,9 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
     let visible = input.text.applyingTransformFW2HW(reverse: false)
     guard isSinglePrintableASCII(visible), visible != " " else { return nil }
 
+    if cassetteCanContinueCurrentRawBuffer(with: visible) {
+      return nil
+    }
     if isProtectedMixedToken(handler.calligrapher) {
       return visible
     }
@@ -248,6 +251,26 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
 
   private var mixedTokenSyntaxCharacters: Set<String> {
     Set(["@", ":", "/", ".", "_", "-", "+", "%", "?", "&", "=", "#", "~"])
+  }
+
+  private func cassetteCanContinueCurrentRawBuffer(with visible: String) -> Bool {
+    guard !handler.calligrapher.isEmpty,
+          handler.calligrapher == handler.calligrapher.lowercased()
+    else {
+      return false
+    }
+    let rawPrefix = handler.calligrapher
+    let allPrefixKeysBelongToCassette = rawPrefix.allSatisfy {
+      handler.currentLM.isThisCassetteKeyAllowed(key: String($0))
+    }
+    guard allPrefixKeysBelongToCassette,
+          handler.currentLM.lxQuerier.cassetteHasKeyPrefix(rawPrefix)
+    else {
+      return false
+    }
+    return handler.currentLM.lxQuerier.cassetteHasKeyPrefix(
+      rawPrefix + visible.lowercased()
+    )
   }
 
   private func isProtectedMixedToken(_ text: String) -> Bool {
@@ -398,9 +421,17 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
       }
       return
     }
+    let currentBufferIsCassettePrefix = handler.calligrapher == handler.calligrapher.lowercased()
+      && handler.calligrapher.allSatisfy {
+        handler.currentLM.isThisCassetteKeyAllowed(key: String($0))
+      }
+      && handler.currentLM.lxQuerier.cassetteHasKeyPrefix(handler.calligrapher)
+    let recognizedDigitLeadingSuffix = isRecognizedDigitLeadingMixedTokenSuffix(
+      handler.calligrapher
+    )
     let shouldProtectASCII = handler.prefs.mixTypeMixedTokenSegmentationEnabled
-      && (isProtectedMixedToken(handler.calligrapher)
-        || isRecognizedDigitLeadingMixedTokenSuffix(handler.calligrapher))
+      && (recognizedDigitLeadingSuffix
+        || (!currentBufferIsCassettePrefix && isProtectedMixedToken(handler.calligrapher)))
     let offers = shouldProtectASCII
       ? []
       : handler.hybridCandidateOffers(for: handler.calligrapher)
