@@ -386,11 +386,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: 80a2774a plus final V0.2 learning-quality hardening working tree (commit pending)
+Latest commit: c16a27fa
 Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow; exact-commit composition phrase learning with independent pending persistence; bounded N-best full-Pinyin composition fallback; threshold-time factory-reading promotion validation; sequential character-to-phrase acceptance
 Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 28/28 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin, composition-learning, and composed-Pinyin N-best builds installed with strict codesign verification; local private `過來一下 → guolaiyixia / glyx` entry seeded for immediate live acceptance; existing private Personal/CIN data preserved
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin, composition-learning, composed-Pinyin N-best, and final learning-quality hardening builds installed with strict codesign verification; existing Personal / explicit-promotion pending / composition pending / single-character preference / private CIN data all preserved
 Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; only a few UI-only Mac acceptance checks remain (provider switching / Shift-ASCII), not core learning architecture
-Next unfinished item: install the hardening build, run the short UI sanity checks, then start V0.3 mixed-token segmentation
+Next unfinished item: run the short remaining UI-only sanity checks, then start V0.3 mixed-token segmentation
 ```
