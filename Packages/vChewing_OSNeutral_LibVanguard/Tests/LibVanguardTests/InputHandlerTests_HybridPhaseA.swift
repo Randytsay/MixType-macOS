@@ -1152,6 +1152,145 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     #expect(saveCount == 1)
   }
 
+  @Test
+  func test_IH527_HybridPersonalLexiconSupportsFullMixedAndInitialsPinyin() throws {
+    guard let testHandler else {
+      Issue.record("Test handler is nil.")
+      return
+    }
+
+    let oldEnglishIntent = testHandler.prefs.mixTypeEnglishIntentEnabled
+
+    let jiuHao = LXAssembly.PersonalLexiconEntry(
+      phrase: "就好",
+      readings: ["ㄐㄧㄡˋ", "ㄏㄠˇ"],
+      pinyinTokens: ["jiu", "hao"],
+      fullPinyinKey: "jiuhao",
+      initialsKey: "jh",
+      source: .manual,
+      pinned: true
+    )
+    let jiuHaoLe = LXAssembly.PersonalLexiconEntry(
+      phrase: "就好了",
+      readings: ["ㄐㄧㄡˋ", "ㄏㄠˇ", "ㄌㄜ˙"],
+      pinyinTokens: ["jiu", "hao", "le"],
+      fullPinyinKey: "jiuhaole",
+      initialsKey: "jhl",
+      source: .manual,
+      pinned: true
+    )
+    defer {
+      testHandler.prefs.mixTypeEnglishIntentEnabled = oldEnglishIntent
+      testHandler.currentLM.replacePersonalLexiconEntries([])
+    }
+
+    testHandler.currentLM.replacePersonalLexiconEntries([jiuHao, jiuHaoLe])
+    testHandler.prefs.mixTypeEnglishIntentEnabled = true
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    // `jhaole` 本身符合保守英文外形 heuristic；Personal mixed-prefix 是較強的
+    // 使用者來源，因此即使英文意圖開啟也不可被隱藏。
+    #expect(MixTypeEnglishIntent.looksLikeEnglishWord("jhaole"))
+
+    let full = try #require(
+      testHandler.hybridCandidateOffers(for: "jiuhaole").first(where: { $0.candidate.value == "就好了" })
+    )
+    #expect(full.source == .personalFullPinyin)
+
+    let mixedPhrase = try #require(
+      testHandler.hybridCandidateOffers(for: "jhaole").first(where: { $0.candidate.value == "就好了" })
+    )
+    #expect(mixedPhrase.source == .personalMixedPinyin)
+
+    let mixedShort = try #require(
+      testHandler.hybridCandidateOffers(for: "jhao").first(where: { $0.candidate.value == "就好" })
+    )
+    #expect(mixedShort.source == .personalMixedPinyin)
+
+    let initials = try #require(
+      testHandler.hybridCandidateOffers(for: "jhl").first(where: { $0.candidate.value == "就好了" })
+    )
+    #expect(initials.source == .personalInitials)
+  }
+
+  @Test
+  func test_IH528_HybridMixedFactorySelectionAutoPromotesThenInitialsWork() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let oldAutoPromotionEnabled = testHandler.prefs.mixTypeAutoPromotionEnabled
+    let oldThreshold = testHandler.prefs.mixTypeAutoPromotionThreshold
+    let oldEnglishIntent = testHandler.prefs.mixTypeEnglishIntentEnabled
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      testHandler.prefs.mixTypeAutoPromotionEnabled = oldAutoPromotionEnabled
+      testHandler.prefs.mixTypeAutoPromotionThreshold = oldThreshold
+      testHandler.prefs.mixTypeEnglishIntentEnabled = oldEnglishIntent
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.currentLM.replacePersonalLexiconEntries([])
+      testHandler.currentLM.replacePersonalLexiconPromotionObservations([])
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    testHandler.currentLM.replacePersonalLexiconEntries([])
+    testHandler.currentLM.replacePersonalLexiconPromotionObservations([])
+    testHandler.prefs.mixTypeAutoPromotionEnabled = true
+    testHandler.prefs.mixTypeAutoPromotionThreshold = 3
+    // 這個 regression 專測 mixed-prefix learning；避免 English-intent heuristic
+    // 把形似英文的測試字串在候選 UI 前先隱藏。
+    testHandler.prefs.mixTypeEnglishIntentEnabled = false
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    let initialOffer = try #require(
+      testHandler.hybridCandidateOffers(for: "nliu").first(where: { $0.candidate.value == "能留" })
+    )
+    #expect(initialOffer.source == .pinyinAbbreviation)
+
+    for expectedCount in 1 ... 3 {
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true)
+      typeSentence("nliu")
+
+      let candidateIndex = try #require(
+        testSession.state.candidates.firstIndex(where: { $0.value == "能留" })
+      )
+      testSession.candidatePairSelectionConfirmed(at: candidateIndex)
+
+      if expectedCount < 3 {
+        #expect(testHandler.currentLM.personalLexiconEntries.isEmpty)
+        #expect(testHandler.currentLM.personalLexiconPromotionObservations.first?.selectionCount == expectedCount)
+      }
+    }
+
+    let promoted = try #require(
+      testHandler.currentLM.personalLexiconEntries.first(where: { $0.phrase == "能留" })
+    )
+    #expect(promoted.fullPinyinKey == "nengliu")
+    #expect(promoted.initialsKey == "nl")
+
+    let initialsOffer = try #require(
+      testHandler.hybridCandidateOffers(for: "nl").first(where: { $0.candidate.value == "能留" })
+    )
+    #expect(initialsOffer.source == .personalInitials)
+  }
+
   private func verifyNativePhoneticPersonalLexicon(
     parser: KeyboardParser,
     expectedProvider: Shared.MixTypeBaseInputProvider

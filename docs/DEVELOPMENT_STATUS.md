@@ -69,6 +69,9 @@ and full-Pinyin matches.
 - English intent keeps stronger Chinese sources (CIN / Personal / full Pinyin) intact: ✅
 - Personal Lexicon manual reading editor accepts canonical Zhuyin or toned Hanyu Pinyin (`hui4 ling2`, `huì líng`) and normalizes to internal Zhuyin: ✅
 - single-character Personal Lexicon reading derivation now prefers the production reverse-lookup index; production regression locks `卉羚 → huiling / hl`: ✅
+- Personal Lexicon mixed-Pinyin prefix matching: query-time per-syllable prefix match without alias expansion (`jhaole → 就好了`, `jhao → 就好`): ✅
+- mixed-prefix Personal candidates remain visible even when conservative English-intent detection considers the raw token English-shaped: ✅
+- existing factory mixed-abbreviation selections still feed Auto Promotion; after threshold promotion, the generated initials key is immediately available (`nliu → 能留` ×3 ⇒ `nl → 能留`): ✅
 - toneless Pinyin single-character preference store (`single-character-preferences-cht/chs.json`): ✅
 - explicit single-character Pinyin selections learn by tone-insensitive Zhuyin bucket (for example `ㄧㄠˋ → ㄧㄠ`) and persist across restarts: ✅
 - single-character candidate order starts changing only after 3 explicit selections; the first 1–2 selections are recorded but do not reorder, reducing accidental-learning risk: ✅
@@ -142,6 +145,8 @@ and full-Pinyin matches.
 - [x] auto-promotion pending JSON survives restart
 - [x] auto-learning enable/threshold Settings UI
 - [x] conservative English-intent filtering for abbreviation-only collisions
+- [x] Personal Lexicon mixed-Pinyin prefix matching without persisted alias expansion
+- [x] mixed-prefix → Auto Promotion → full initials acceptance regression
 - [x] toneless-Pinyin single-character selection preference + JSON persistence
 - [x] Hybrid/native Pinyin single-character candidate re-ranking
 - [ ] broader V0.3 English/Chinese token segmentation (URLs, e-mail, model names, units, adjacent mixed tokens)
@@ -296,17 +301,30 @@ selection of `耀` leaves the original order unchanged for the first two selecti
 dedicated JSON store round-trips successfully, LXMgr save/reload passes, full LibVanguard tests pass,
 SettingsUI remains 17/17 PASS, LXMgrTests are 25/25 PASS, and `make debug` passes.
 
+Personal Lexicon now also supports mixed Pinyin prefixes without changing its persisted schema or
+materializing combinatorial aliases. Hybrid splits the raw Pinyin stream with the existing `PinyinTrie`
+and compares each chunk against the corresponding `pinyinTokens` entry using prefix semantics. Thus a
+single `就好了 = [jiu, hao, le]` entry is reachable through full Pinyin (`jiuhaole`), initials (`jhl`),
+and mixed forms such as `jhaole` / `jiuhle`; `就好 = [jiu, hao]` is reachable through `jhao`. Direct
+full/initial matches keep their existing source identity and ordering, while only genuinely mixed forms
+use the new Personal mixed-prefix source. The query is computed at lookup time, so JSON schema v1 remains
+unchanged and no alias explosion occurs. Regression `IH527` locks `jiuhaole / jhaole / jhl → 就好了`
+and `jhao → 就好`, including the case where English-intent detection is enabled. Regression `IH528`
+locks the learning bridge: repeated explicit selection of a factory mixed-abbreviation candidate promotes
+it at the normal threshold, after which its all-initials key resolves through Personal Lexicon. Full
+LibVanguard tests pass, SettingsUI remains 17/17 PASS, LXMgrTests are 25/25 PASS, and `make debug` passes.
+
 ## Handoff template
 
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
 Current branch: feat/personal-lexicon-v02
-Latest commit: 94e010e1 plus single-character preference working tree (commit pending)
-Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking
+Latest commit: 055a034c plus mixed-Pinyin Personal Lexicon working tree (commit pending)
+Completed: V0.1 runtime acceptance; V0.2 Personal Lexicon model/index/persistence; factory+Tekkon reading/key derivation; Hybrid Personal full/initials/mixed-prefix lookup; Homa Personal gram integration; ASCII/Shift-ASCII/explicit-English routing; activation reload; selection learning/persistence; Batch A Personal Lexicon management UI/import-export; Base Input Provider abstraction; native Zhuyin/Pinyin Personal integration; Batch B Auto Promotion/pending persistence; Auto Promotion Settings controls; conservative English-intent filtering; toned-Pinyin reading correction; toneless-Pinyin single-character preference learning/re-ranking; mixed-prefix → Auto Promotion → initials flow
 Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; LXMgrTests 25/25 PASS; four localization plist lints PASS; `make debug` PASS on Xcode 27 / Swift 6.4
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; single-character preference real-Mac E2E pending installation
-Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and single-character preference still need final real-Mac E2E
-Next unfinished item: commit/push/install the single-character preference build, verify repeated `yao → 耀` selection moves it forward and survives restart, then continue V0.3 token segmentation after V0.2 acceptance
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin build pending installation/runtime acceptance
+Known issues: V0.3-level full mixed-token segmentation is intentionally not part of V0.2; native Zhuyin/Pinyin provider switching and final mixed-prefix real-Mac E2E still need acceptance
+Next unfinished item: commit/push/install the mixed-Pinyin build, verify real `jhao / jhaole / jhl` Personal lookup on Mac, then continue V0.3 token segmentation after V0.2 acceptance
 ```

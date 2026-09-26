@@ -72,6 +72,7 @@ extension LXAssembly {
 
   public enum PersonalLexiconMatchKind: String, Sendable {
     case fullPinyin
+    case mixedPinyinPrefix
     case initials
   }
 
@@ -149,6 +150,32 @@ extension LXAssembly {
         result.append(.init(entry: entry, kind: .initials, score: Self.score(entry, full: false)))
       }
       return result.sorted {
+        if $0.score != $1.score { return $0.score > $1.score }
+        let lhsLastUsed = $0.entry.lastUsedAt ?? .distantPast
+        let rhsLastUsed = $1.entry.lastUsedAt ?? .distantPast
+        if lhsLastUsed != rhsLastUsed { return lhsLastUsed > rhsLastUsed }
+        if $0.entry.updatedAt != $1.entry.updatedAt { return $0.entry.updatedAt > $1.entry.updatedAt }
+        return $0.entry.phrase < $1.entry.phrase
+      }
+    }
+
+    /// 逐音節 Pinyin prefix matching。
+    ///
+    /// 例如詞條 `就好了 = [jiu, hao, le]` 可由 `[j, hao, le]`、`[jiu, h, le]`
+    /// 等查詢命中。這裡不預先生成所有 alias，避免長詞組合爆炸；只在查詢時做
+    /// token-count + prefix 比對。全拼與全簡拼仍由既有索引處理。
+    public func matches(pinyinPrefixes rawPrefixes: [String]) -> [PersonalLexiconMatch] {
+      let prefixes = rawPrefixes.map(Self.normalizeLookupKey)
+      guard prefixes.count >= 2, prefixes.allSatisfy({ !$0.isEmpty }) else { return [] }
+
+      return entries.compactMap { entry -> PersonalLexiconMatch? in
+        guard !entry.disabled, entry.pinyinTokens.count == prefixes.count else { return nil }
+        let matched = zip(entry.pinyinTokens, prefixes).allSatisfy { token, prefix in
+          Self.normalizeLookupKey(token).hasPrefix(prefix)
+        }
+        guard matched else { return nil }
+        return .init(entry: entry, kind: .mixedPinyinPrefix, score: Self.score(entry, full: false) + 5.0)
+      }.sorted {
         if $0.score != $1.score { return $0.score > $1.score }
         let lhsLastUsed = $0.entry.lastUsedAt ?? .distantPast
         let rhsLastUsed = $1.entry.lastUsedAt ?? .distantPast

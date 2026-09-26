@@ -41,6 +41,29 @@ struct PersonalLexiconTests {
   }
 
   @Test
+  func testPersonalLexiconMatchesMixedPinyinPrefixesWithoutAliasExpansion() throws {
+    let entry = LXAssembly.PersonalLexiconEntry(
+      phrase: "就好了",
+      readings: ["ㄐㄧㄡˋ", "ㄏㄠˇ", "ㄌㄜ˙"],
+      pinyinTokens: ["jiu", "hao", "le"],
+      fullPinyinKey: "jiuhaole",
+      initialsKey: "jhl",
+      source: .manual,
+      pinned: true
+    )
+    let store = LXAssembly.PersonalLexiconStore(entries: [entry])
+
+    for prefixes in [["j", "hao", "le"], ["jiu", "h", "le"], ["j", "h", "l"]] {
+      let match = try #require(store.matches(pinyinPrefixes: prefixes).first)
+      #expect(match.entry.phrase == "就好了")
+      #expect(match.kind == .mixedPinyinPrefix)
+    }
+
+    #expect(store.matches(pinyinPrefixes: ["j", "hao"]).isEmpty)
+    #expect(store.matches(pinyinPrefixes: ["x", "hao", "le"]).isEmpty)
+  }
+
+  @Test
   func testPersonalLexiconDisabledEntryIsNotIndexed() {
     let store = LXAssembly.PersonalLexiconStore(entries: [makeEntry(disabled: true)])
     #expect(store.matches(for: "taidanengyuan").isEmpty)

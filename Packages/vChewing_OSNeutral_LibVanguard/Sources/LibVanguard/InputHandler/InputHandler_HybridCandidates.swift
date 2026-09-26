@@ -15,6 +15,7 @@ struct HybridCandidateOffer {
     case personalFullPinyin
     case cassetteQuick
     case pinyinFull
+    case personalMixedPinyin
     case personalInitials
     case pinyinAbbreviation
   }
@@ -46,7 +47,7 @@ extension InputHandlerProtocol {
   /// 以 Hybrid raw-key buffer 唯讀生成候選。
   ///
   /// 排序固定為 CIN exact → Personal full Pinyin → CIN quick → full Pinyin
-  /// → Personal initials → abbreviated Pinyin；
+  /// → Personal mixed Pinyin prefix → Personal initials → abbreviated Pinyin；
   /// 相同輸出值只保留第一次出現者，因此 CIN 命中不會被拼音重新排序到後方。
   func hybridCandidateOffers(for rawKeys: String) -> [HybridCandidateOffer] {
     guard !rawKeys.isEmpty else { return [] }
@@ -91,6 +92,11 @@ extension InputHandlerProtocol {
     groupedOffers.append(cassetteQuick)
 
     groupedOffers.append(hybridFullPinyinOffers(for: rawKeys))
+    let alreadyMatchedPersonalIDs = Set(personalMatches.map(\.entry.id))
+    groupedOffers.append(hybridPersonalMixedPinyinOffers(
+      for: rawKeys,
+      excludingEntryIDs: alreadyMatchedPersonalIDs
+    ))
     groupedOffers.append(personalMatches.compactMap { match in
       guard match.kind == .initials else { return nil }
       return HybridCandidateOffer(
@@ -170,7 +176,7 @@ extension InputHandlerProtocol {
         return nil
       }
       return .commit(committableDisplayText(sansReading: true) + canonicalCandidate.value)
-    case .personalFullPinyin, .personalInitials:
+    case .personalFullPinyin, .personalMixedPinyin, .personalInitials:
       guard confirmHybridPinyinCandidate(canonicalCandidate) else { return nil }
       observeMixTypeExplicitSelection(canonicalCandidate, allowAutoPromotion: false)
       return .composition
@@ -248,6 +254,36 @@ extension InputHandlerProtocol {
     return reordered.compactMap { candidate in
       let signature = "\(candidate.keyArray.joined(separator: "\u{1F}"))\u{1E}\(candidate.value)"
       return offerBySignature[signature]
+    }
+  }
+
+  private func hybridPersonalMixedPinyinOffers(
+    for rawKeys: String,
+    excludingEntryIDs: Set<UUID>
+  ) -> [HybridCandidateOffer] {
+    guard composer.parser.isPinyin else { return [] }
+    let normalized = rawKeys.lowercased()
+    let trie = Tekkon.PinyinTrie.shared(parser: composer.parser)
+    let chunks = trie.chop(normalized)
+    guard chunks.count >= 2,
+          chunks.joined() == normalized,
+          chunks.allSatisfy({ !trie.zhuyinReadings(forPinyinFragment: $0).isEmpty })
+    else {
+      return []
+    }
+
+    return currentLM.lxQuerier.personalLexiconMatches(pinyinPrefixes: chunks).compactMap { match in
+      guard match.kind == .mixedPinyinPrefix,
+            !excludingEntryIDs.contains(match.entry.id)
+      else {
+        return nil
+      }
+      return HybridCandidateOffer(
+        candidate: (keyArray: match.entry.readings, value: match.entry.phrase),
+        source: .personalMixedPinyin,
+        score: match.score,
+        personalEntryID: match.entry.id
+      )
     }
   }
 

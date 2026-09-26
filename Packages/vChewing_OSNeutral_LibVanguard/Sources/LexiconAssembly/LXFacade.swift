@@ -283,6 +283,10 @@ extension LXAssembly {
         lxFacade.lxPersonalLexicon.matches(for: rawKey)
       }
 
+      public func personalLexiconMatches(pinyinPrefixes: [String]) -> [PersonalLexiconMatch] {
+        lxFacade.lxPersonalLexicon.matches(pinyinPrefixes: pinyinPrefixes)
+      }
+
       // MARK: Fileprivate
 
       fileprivate let lxFacade: LXFacade
