@@ -1613,6 +1613,7 @@ extension LibVanguardTestsRoot.InputHandlerTests {
 
   @Test(arguments: [
     "MacBookM6",
+    "MacBookM6gai",
     "ABC123",
     "server2026",
     "SOC80%",
@@ -1623,10 +1624,122 @@ extension LibVanguardTestsRoot.InputHandlerTests {
 
   @Test(arguments: [
     "email@example.com",
+    "email@example.comgai",
     "https://example.com/path?q=1",
   ])
   func test_IH535_MixedTokenSegmentationProtectsEmailAndURLTokens(token: String) throws {
     try verifyProtectedMixedToken(token)
+  }
+
+  @Test
+  func test_IH536_MixedTokenSegmentationSplitsEnglishPrefixFromPinyinSuffixWithoutAutoSelecting() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    LXAssembly.LXFacade.asyncLoadingUserData = false
+    defer {
+      LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+    [
+      Homa.Gram(keyArray: ["ㄐㄧㄣ"], value: "今", score: 20),
+      Homa.Gram(keyArray: ["ㄊㄧㄢ"], value: "天", score: 20),
+      Homa.Gram(keyArray: ["ㄐㄧㄣ", "ㄊㄧㄢ"], value: "今天", score: 100),
+      Homa.Gram(keyArray: ["ㄍㄞˇ"], value: "改", score: 100),
+    ].forEach {
+      testHandler.currentLM.insertTemporaryData(unigram: $0, isFiltering: false)
+    }
+
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+
+    typeSentence("jintian")
+    let todayIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "今天" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: todayIndex)
+    #expect(testHandler.assembler.assembledSentence.map { $0.value } == ["今天"])
+    #expect(testSession.recentCommissions.isEmpty)
+
+    typeSentence("meetinggai")
+    #expect(testSession.recentCommissions.joined() == "今天meeting")
+    #expect(testHandler.calligrapher == "gai")
+    #expect(testSession.state.candidates.contains { $0.value == "改" })
+    #expect(testHandler.assembler.isEmpty)
+
+    let changeIndex = try #require(
+      testSession.state.candidates.firstIndex(where: { $0.value == "改" })
+    )
+    testSession.candidatePairSelectionConfirmed(at: changeIndex)
+    #expect(testSession.recentCommissions.joined() == "今天meeting")
+    #expect(testHandler.calligrapher.isEmpty)
+    #expect(testHandler.assembler.assembledSentence.map { $0.value } == ["改"])
+
+    #expect(testHandler.triageInput(event: KBEvent.KeyEventData.dataEnterReturn.asEvent))
+    #expect(testSession.recentCommissions.joined() == "今天meeting改")
+  }
+
+  @Test
+  func test_IH537_MixedTokenSegmentationDoesNotSplitValidPinyinPrefix() throws {
+    guard let testHandler, let testSession else {
+      Issue.record("Test handler or session is nil.")
+      return
+    }
+
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    defer {
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.currentLM.clearTemporaryData(isFiltering: false)
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
+    guard let cassetteURL = cassetteURLForTests("wubi", ext: "cin") else {
+      Issue.record("Unable to access wubi.cin test fixture.")
+      return
+    }
+    LXAssembly.LXFacade.loadCassetteData(path: cassetteURL.path)
+
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    testHandler.prefs.cassetteEnabled = true
+    testHandler.prefs.hybridCassettePinyinEnabled = true
+    testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = true
+    testHandler.ensureKeyboardParser()
+    testHandler.currentLM.syncPrefs()
+    testHandler.currentLM.insertTemporaryData(
+      unigram: .init(keyArray: ["ㄍㄞˇ"], value: "改", score: 100),
+      isFiltering: false
+    )
+
+    typeSentence("nengliu")
+    #expect(testHandler.calligrapher == "nengliu")
+    #expect(testSession.recentCommissions.isEmpty)
+    #expect(testSession.state.candidates.contains { $0.value == "能留" })
+
+    testHandler.clear()
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    typeSentence("taidagai")
+    #expect(testHandler.calligrapher == "taidagai")
+    #expect(testSession.recentCommissions.isEmpty)
   }
 
   private func verifyProtectedMixedToken(_ token: String) throws {

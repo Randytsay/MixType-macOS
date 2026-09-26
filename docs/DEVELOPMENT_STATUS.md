@@ -40,8 +40,10 @@ V0.3 Phase A keeps the accepted Hybrid typewriter as the single authoritative ev
 a default-off `MixTypeMixedTokenSegmentationEnabled` preference and deterministic protected-ASCII handling
 inside that route only. Case-sensitive model names / acronyms, English+digit tokens, e-mail addresses, URLs,
 and common URL/unit punctuation can remain in the Hybrid raw buffer without being split by Shift-ASCII or
-accidental Chinese-candidate routing. With the flag off, V0.2 behavior is unchanged. Chinese↔ASCII adjacency
-segmentation and digit-leading units/time tokens remain subsequent V0.3 work.
+accidental Chinese-candidate routing. With the flag off, V0.2 behavior is unchanged. Batch 2 adds
+conservative adjacent English→Pinyin boundary splitting: the ASCII prefix must have strong English evidence,
+the suffix must have a real full/composed Pinyin source, and the Chinese suffix remains in the candidate UI
+for explicit confirmation rather than being auto-selected. Digit-leading units/time remain subsequent work.
 
 ## Repository state
 
@@ -105,6 +107,8 @@ segmentation and digit-leading units/time tokens remain subsequent V0.3 work.
 - protected ASCII token routing in the existing Hybrid typewriter (no second typewriter / no LLM / no network): ✅
 - case-sensitive / alphanumeric token preservation (`MacBookM6`, `ABC123`, `server2026`, `SOC80%`): ✅ focused regression
 - e-mail / URL token preservation (`email@example.com`, `https://example.com/path?q=1`): ✅ focused regression
+- adjacent English→Pinyin split without auto-selection (`今天meetinggai` → commit `今天meeting`, keep `gai` candidates): ✅ focused regression
+- valid-Pinyin anti-split guards (`nengliu`, `taidagai`) and protected-token atomicity: ✅ focused regression
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -141,7 +145,7 @@ segmentation and digit-leading units/time tokens remain subsequent V0.3 work.
 1. V0.2 final hardening build installation: ✅ complete with strict codesign verification and private runtime data preserved.
 2. Final Mac sanity: ✅ complete. Existing real-Mac evidence already covers Shift-ASCII / explicit English override; the final provider-state pass verified Zhuyin → Pinyin → CIN transitions against the installed input source and restored the original CIN/Hybrid preferences afterward.
 3. Learned runtime data sanity: ✅ `韋宏 = weihong / wh`, `過來一下 = guolaiyixia / glyx`, and the learned `耀` single-character preference remain persisted after the final hardening install.
-4. V0.2 is acceptance complete. V0.3 Phase A Batch 1 has passed the full validation gate; after commit/push, continue adjacent Chinese/ASCII boundary segmentation and digit-leading unit/time cases.
+4. V0.2 is acceptance complete. V0.3 Phase A Batch 1 is committed/pushed; Batch 2 adjacent English→Pinyin segmentation is implemented and entering its full validation gate.
 
 ## V0.2 implementation status
 
@@ -186,7 +190,8 @@ segmentation and digit-leading units/time tokens remain subsequent V0.3 work.
 - [x] V0.3 default-off mixed-token routing flag
 - [x] V0.3 protected ASCII model/acronym/alphanumeric tokens
 - [x] V0.3 protected e-mail / URL tokens
-- [ ] V0.3 adjacent Chinese ↔ ASCII automatic segmentation
+- [x] V0.3 adjacent Chinese → ASCII flow through existing assembler + Hybrid raw buffer
+- [x] V0.3 adjacent ASCII → Pinyin boundary split with explicit Chinese candidate confirmation
 - [ ] V0.3 digit-leading unit/time tokens (`3pm`, `20kW`, `300RT`) as one deterministic mixed-token flow
 
 ## V0.1 phase checklist
@@ -401,11 +406,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/mixed-token-v03
-Latest accepted V0.2 commit: 39ef9129
-Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batch 1 protected ASCII token routing implemented behind a default-off flag with focused coverage for model/acronym/alphanumeric/e-mail/URL tokens
-Tests: V0.3 Batch 1 full LibVanguard package tests PASS (including IH533-IH535); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS; `make debug` PASS; `git diff --check` PASS.
+Latest V0.3 commit: 80971da7 (Batch 1)
+Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batch 1 protected ASCII tokens committed/pushed; Batch 2 adjacent English→Pinyin boundary split implemented without automatic candidate selection
+Tests: Batch 2 full LibVanguard package tests PASS (including IH534-IH537); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS; `make debug` PASS; `git diff --check` PASS.
 CI: no GitHub Actions run observed for the latest V0.2 feature work
 Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin, composition-learning, composed-Pinyin N-best, and final learning-quality hardening builds installed with strict codesign verification; existing Personal / explicit-promotion pending / composition pending / single-character preference / private CIN data all preserved
-Known issues: no V0.2 blocker. V0.3 Batch 1 intentionally does not yet solve automatic Chinese↔ASCII adjacency or digit-leading unit/time segmentation.
-Next unfinished item: validate/commit/push V0.3 Phase A Batch 1, then implement deterministic adjacent-token boundary handling in the same Hybrid route
+Known issues: no V0.2 blocker. V0.3 still needs digit-leading unit/time handling (`3pm`, `20kW`, `300RT`).
+Next unfinished item: validate/commit/push V0.3 Phase A Batch 2, then finish digit-leading mixed-token handling in the same Hybrid route
 ```

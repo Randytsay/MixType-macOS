@@ -119,6 +119,9 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
 
     if let mixedTokenCharacter = resolveMixedTokenCharacter(input) {
       handler.calligrapher.append(mixedTokenCharacter)
+      if trySplitASCIIAndHybridPinyinSuffix(session: session) {
+        return true
+      }
       refreshState(session: session)
       return true
     }
@@ -141,6 +144,9 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
     guard isCassetteKey || isPinyinKey else { return nil }
 
     handler.calligrapher.append(rawInput)
+    if trySplitASCIIAndHybridPinyinSuffix(session: session) {
+      return true
+    }
     refreshState(session: session)
     return true
   }
@@ -246,6 +252,115 @@ public struct HybridCassettePinyinTypewriter<Handler: InputHandlerProtocol>: Typ
     let scalars = text.unicodeScalars
     guard scalars.count == 1, let scalar = scalars.first else { return false }
     return scalar.isASCII && (0x21 ... 0x7E).contains(scalar.value)
+  }
+
+  /// V0.3 Phase A Batch 2：把「確定的 ASCII prefix + 可完整查到中文的 Pinyin suffix」
+  /// 在同一個 Hybrid route 內切開。
+  ///
+  /// 例如 `meetinggai`：`meeting` 具有保守 English-word shape，且無法完整切成合法
+  /// Pinyin 音節；`gai` 有 full-Pinyin 中文候選。此時只提交 ASCII prefix，保留
+  /// `gai` 與候選窗，**不自動選「改」**。
+  private func trySplitASCIIAndHybridPinyinSuffix(session: Handler.Session) -> Bool {
+    guard handler.prefs.mixTypeMixedTokenSegmentationEnabled else { return false }
+    let fullInput = handler.calligrapher
+    guard fullInput.count >= 3,
+          !isProtectedMixedToken(fullInput),
+          fullInput.range(of: "^[A-Za-z0-9@:/._+%?&=#~-]+$", options: .regularExpression) != nil
+    else {
+      return false
+    }
+
+    // 使用者自己的詞條、CIN exact/quick 或 factory full-Pinyin 整段命中均優先保留；
+    // 僅 composed/abbreviation 這類較弱的「碰巧可組」結果不得阻止明確 ASCII 邊界。
+    let wholeOffers = handler.hybridCandidateOffers(for: fullInput)
+    let hasAuthoritativeWholeOffer = wholeOffers.contains {
+      switch $0.source {
+      case .cassetteExact, .personalFullPinyin, .cassetteQuick, .pinyinFull,
+           .personalMixedPinyin, .personalInitials:
+        return true
+      case .pinyinComposed, .pinyinAbbreviation:
+        return false
+      }
+    }
+    guard !hasAuthoritativeWholeOffer else { return false }
+
+    for prefixLength in 1 ..< fullInput.count {
+      let splitIndex = fullInput.index(fullInput.startIndex, offsetBy: prefixLength)
+      let prefix = String(fullInput[..<splitIndex])
+      let suffix = String(fullInput[splitIndex...])
+      guard suffix.count >= 2,
+            suffix.range(of: "^[a-z]+$", options: .regularExpression) != nil,
+            isConfidentASCIIIntentPrefix(prefix)
+      else {
+        continue
+      }
+
+      let suffixOffers = handler.hybridCandidateOffers(for: suffix)
+      let hasStrongPinyinSuffix = suffixOffers.contains {
+        switch $0.source {
+        case .personalFullPinyin, .pinyinFull, .pinyinComposed, .personalMixedPinyin:
+          return true
+        case .cassetteExact, .cassetteQuick, .personalInitials, .pinyinAbbreviation:
+          return false
+        }
+      }
+      guard hasStrongPinyinSuffix else { continue }
+
+      let priorChineseText = handler.committableDisplayText(sansReading: true)
+      let priorChineseKeyCount = handler.assembler.length
+      if priorChineseKeyCount > 0, !priorChineseText.isEmpty {
+        session.commit(text: priorChineseText)
+        handler.assembler.cursor = 0
+        for _ in 0 ..< priorChineseKeyCount {
+          _ = handler.dropKey(direction: .front)
+        }
+      }
+
+      handler.calligrapher = suffix
+      var state = handler.generateStateOfInputting(guarded: true)
+      state.candidates = suffixOffers.map { $0.candidate }
+      state.textToCommit = prefix
+      session.switchState(state)
+      return true
+    }
+    return false
+  }
+
+  /// English shape 只是一層弱證據；若同一 prefix 本身能被完整切成合法 Pinyin，
+  /// 預設不把它當成自動 mixed-token 邊界。只有兩類額外證據會升級為明確 ASCII：
+  /// 1. 相鄰重複英文字母（例如 `meeting` 的 `ee`）；
+  /// 2. 最長合法 Pinyin 前綴之後仍殘留至少 2 個字母（例如 `server`）。
+  /// 這可避免把 `taida`、`taidag` 這類合法拼音或僅多一鍵的中間態誤切。
+  private func isConfidentASCIIIntentPrefix(_ text: String) -> Bool {
+    guard !isProtectedMixedToken(text) else { return false }
+    guard MixTypeEnglishIntent.looksLikeEnglishWord(text),
+          handler.composer.parser.isPinyin
+    else {
+      return false
+    }
+    let normalized = text.lowercased()
+    let chars = Array(normalized)
+    if zip(chars, chars.dropFirst()).contains(where: { $0 == $1 }) {
+      return true
+    }
+
+    let trie = Tekkon.PinyinTrie.shared(parser: handler.composer.parser)
+    guard let pinyinMap = handler.composer.parser.mapZhuyinPinyin else { return false }
+    var longestCoveredPrefixLength = 0
+    if !normalized.isEmpty {
+      for length in stride(from: normalized.count, through: 1, by: -1) {
+        let prefix = String(normalized.prefix(length))
+        let chopped = trie.chop(prefix)
+        let isFullyCovered = !chopped.isEmpty
+          && chopped.joined() == prefix
+          && chopped.allSatisfy { pinyinMap[$0] != nil }
+        if isFullyCovered {
+          longestCoveredPrefixLength = length
+          break
+        }
+      }
+    }
+    return normalized.count - longestCoveredPrefixLength >= 2
   }
 
   private func refreshState(session: Handler.Session) {
