@@ -287,6 +287,8 @@ extension SettingsPanesCocoa {
       let panel = NSSavePanel()
       panel.canCreateDirectories = true
       panel.isExtensionHidden = false
+      // NSSavePanel appends the extension declared by allowedContentTypes / allowedFileTypes.
+      // Keep the suggested name extensionless to avoid duplicating ".mixtypebackup".
       panel.nameFieldStringValue = Self.defaultMixTypeBackupFileName()
       if #unavailable(macOS 11) {
         panel.allowedFileTypes = ["mixtypebackup"]
@@ -375,7 +377,7 @@ extension SettingsPanesCocoa {
       let formatter = DateFormatter()
       formatter.locale = Locale(identifier: "en_US_POSIX")
       formatter.dateFormat = "yyyyMMdd-HHmmss"
-      return "MixType-Backup-\(formatter.string(from: date)).mixtypebackup"
+      return "MixType-Backup-\(formatter.string(from: date))"
     }
   }
 }

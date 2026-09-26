@@ -382,6 +382,8 @@
       let panel = NSSavePanel()
       panel.canCreateDirectories = true
       panel.isExtensionHidden = false
+      // NSSavePanel will append the extension from allowedContentTypes.
+      // Supplying it here as well would produce ".mixtypebackup.mixtypebackup".
       panel.nameFieldStringValue = Self.defaultBackupFileName()
       panel.allowedContentTypes = [UTType(filenameExtension: "mixtypebackup") ?? .data]
       guard panel.runModal() == .OK, let url = panel.url else { return }
@@ -424,7 +426,7 @@
       let formatter = DateFormatter()
       formatter.locale = Locale(identifier: "en_US_POSIX")
       formatter.dateFormat = "yyyyMMdd-HHmmss"
-      return "MixType-Backup-\(formatter.string(from: date)).mixtypebackup"
+      return "MixType-Backup-\(formatter.string(from: date))"
     }
   }
 
