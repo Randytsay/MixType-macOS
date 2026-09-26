@@ -6,6 +6,7 @@
 // 依「SwiftUI 之任何內容不得裸露於 5.10 可編的路徑上」整段圈進 compiler condition，<6.2 分支不提供替代實作。
 #if compiler(>=6.2)
 
+  import AppKit
   import SwiftUI
   import UniformTypeIdentifiers
 
@@ -198,6 +199,21 @@
           }
         }
 
+        Section("i18n:MixType.Backup.section".i18n) {
+          VStack(alignment: .leading, spacing: 8) {
+            HStack {
+              Button("i18n:MixType.Backup.export".i18n) {
+                exportCompleteMixTypeBackup()
+              }
+              Button("i18n:MixType.Backup.restore".i18n) {
+                restoreCompleteMixTypeBackup()
+              }
+            }
+            Text("i18n:MixType.Backup.description".i18n)
+              .settingsDescription()
+          }
+        }
+
         Section {
           UserDef.kFetchSuggestionsFromPerceptionOverrideModel.renderUI()
           UserDef.kReducePOMLifetimeToNoMoreThan12Hours.renderUI()
@@ -360,6 +376,55 @@
         importAlertMessage = nil
         isShowingImportAlert = true
       }
+    }
+
+    private func exportCompleteMixTypeBackup() {
+      let panel = NSSavePanel()
+      panel.canCreateDirectories = true
+      panel.isExtensionHidden = false
+      panel.nameFieldStringValue = Self.defaultBackupFileName()
+      panel.allowedContentTypes = [UTType(filenameExtension: "mixtypebackup") ?? .data]
+      guard panel.runModal() == .OK, let url = panel.url else { return }
+      do {
+        try SettingsUIHost.shared.exportMixTypeBackup(url)
+        importAlertTitle = "i18n:MixType.Backup.export.success.title".i18n
+        importAlertMessage = "i18n:MixType.Backup.export.success.body".i18n
+      } catch {
+        importAlertTitle = "i18n:MixType.Backup.error.title".i18n
+        importAlertMessage = error.localizedDescription
+      }
+      isShowingImportAlert = true
+    }
+
+    private func restoreCompleteMixTypeBackup() {
+      let panel = NSOpenPanel()
+      panel.canChooseFiles = true
+      panel.canChooseDirectories = false
+      panel.allowsMultipleSelection = false
+      panel.allowedContentTypes = [UTType(filenameExtension: "mixtypebackup") ?? .data]
+      guard panel.runModal() == .OK, let url = panel.url else { return }
+      let confirmation = NSAlert()
+      confirmation.messageText = "i18n:MixType.Backup.restore.confirm.title".i18n
+      confirmation.informativeText = "i18n:MixType.Backup.restore.confirm.body".i18n
+      confirmation.addButton(withTitle: "i18n:MixType.Backup.restore.confirm.button".i18n)
+      confirmation.addButton(withTitle: "i18n:Common.Cancel".i18n)
+      guard confirmation.runModal() == .alertFirstButtonReturn else { return }
+      do {
+        try SettingsUIHost.shared.restoreMixTypeBackup(url)
+        importAlertTitle = "i18n:MixType.Backup.restore.success.title".i18n
+        importAlertMessage = "i18n:MixType.Backup.restore.success.body".i18n
+      } catch {
+        importAlertTitle = "i18n:MixType.Backup.error.title".i18n
+        importAlertMessage = error.localizedDescription
+      }
+      isShowingImportAlert = true
+    }
+
+    private static func defaultBackupFileName(date: Date = Date()) -> String {
+      let formatter = DateFormatter()
+      formatter.locale = Locale(identifier: "en_US_POSIX")
+      formatter.dateFormat = "yyyyMMdd-HHmmss"
+      return "MixType-Backup-\(formatter.string(from: date)).mixtypebackup"
     }
   }
 

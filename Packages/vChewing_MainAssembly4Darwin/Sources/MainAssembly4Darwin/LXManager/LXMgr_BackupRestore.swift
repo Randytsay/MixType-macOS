@@ -163,7 +163,7 @@ extension LXMgr {
     let defaultDataFolder = dataFolderPath(isDefaultFolder: true)
     let destinationMap = try destinationPayloadMap(document: document, basePath: defaultDataFolder)
     let oldFileData = destinationMap.reduce(into: [URL: Data?]()) { result, pair in
-      result[pair.key] = try? Data(contentsOf: pair.key)
+      result[pair.key] = .some(try? Data(contentsOf: pair.key))
     }
     let snapshot = UserDef.Snapshot()
 
@@ -263,21 +263,14 @@ extension LXMgr {
       guard seenModes.insert(payload.mode).inserted else {
         throw MixTypeBackupError.duplicateMode(payload.mode)
       }
-      for (role, data) in modePayloadPairs(payload) {
+      for (_, data) in modePayloadPairs(payload) {
         guard let data else { continue }
         try validatePayloadSize(data)
-        if ["phrases", "filter", "replacements", "associates", "symbols"].contains(role),
-           String(data: data, encoding: .utf8) == nil {
-          throw MixTypeBackupError.invalidPayload(role)
-        }
       }
       try validateVersionedLearningPayloads(payload)
     }
     if let symbolMenu = document.symbolMenu {
       try validatePayloadSize(symbolMenu)
-      guard String(data: symbolMenu, encoding: .utf8) != nil else {
-        throw MixTypeBackupError.invalidPayload("symbolMenu")
-      }
     }
   }
 
@@ -330,18 +323,23 @@ extension LXMgr {
       else {
         throw MixTypeBackupError.invalidMode(payload.mode)
       }
-      result[userDictDataURL(mode: mode, type: .thePhrases, basePath: basePath)] = payload.phrases
-      result[userDictDataURL(mode: mode, type: .theFilter, basePath: basePath)] = payload.filter
-      result[userDictDataURL(mode: mode, type: .theReplacements, basePath: basePath)] = payload.replacements
-      result[userDictDataURL(mode: mode, type: .theAssociates, basePath: basePath)] = payload.associates
-      result[userDictDataURL(mode: mode, type: .theSymbols, basePath: basePath)] = payload.symbols
-      result[personalLexiconDataURL(mode: mode, basePath: basePath)] = payload.personalLexicon
-      result[personalLexiconPromotionDataURL(mode: mode, basePath: basePath)] = payload.promotionPending
-      result[compositionPhraseLearningDataURL(mode: mode, basePath: basePath)] = payload.compositionPending
+      result[userDictDataURL(mode: mode, type: .thePhrases, basePath: basePath)] = .some(payload.phrases)
+      result[userDictDataURL(mode: mode, type: .theFilter, basePath: basePath)] = .some(payload.filter)
+      result[userDictDataURL(mode: mode, type: .theReplacements, basePath: basePath)] =
+        .some(payload.replacements)
+      result[userDictDataURL(mode: mode, type: .theAssociates, basePath: basePath)] =
+        .some(payload.associates)
+      result[userDictDataURL(mode: mode, type: .theSymbols, basePath: basePath)] = .some(payload.symbols)
+      result[personalLexiconDataURL(mode: mode, basePath: basePath)] = .some(payload.personalLexicon)
+      result[personalLexiconPromotionDataURL(mode: mode, basePath: basePath)] =
+        .some(payload.promotionPending)
+      result[compositionPhraseLearningDataURL(mode: mode, basePath: basePath)] =
+        .some(payload.compositionPending)
       result[singleCharacterPreferenceDataURL(mode: mode, basePath: basePath)] =
-        payload.singleCharacterPreferences
+        .some(payload.singleCharacterPreferences)
     }
-    result[URL(fileURLWithPath: basePath).appendingPathComponent("symbols.dat")] = document.symbolMenu
+    result[URL(fileURLWithPath: basePath).appendingPathComponent("symbols.dat")] =
+      .some(document.symbolMenu)
     return result
   }
 

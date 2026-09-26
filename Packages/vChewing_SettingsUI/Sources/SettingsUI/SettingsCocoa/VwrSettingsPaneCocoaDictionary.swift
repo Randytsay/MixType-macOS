@@ -146,6 +146,26 @@ extension SettingsPanesCocoa {
               .makeNSLabel(descriptive: true, fixWidth: contentWidth)
           }
         }?.boxed()
+        NSStackView.buildSection(width: contentWidth) {
+          NSStackView.build(.vertical) {
+            NSStackView.build(.horizontal, spacing: 6) {
+              "i18n:MixType.Backup.section".makeNSLabel(fixWidth: contentHalfWidth)
+              NSView()
+              NSButton(
+                "i18n:MixType.Backup.export",
+                target: self,
+                action: #selector(exportMixTypeBackupAction(_:))
+              )
+              NSButton(
+                "i18n:MixType.Backup.restore",
+                target: self,
+                action: #selector(restoreMixTypeBackupAction(_:))
+              )
+            }
+            "i18n:MixType.Backup.description"
+              .makeNSLabel(descriptive: true, fixWidth: contentWidth)
+          }
+        }?.boxed()
         NSView().makeSimpleConstraint(.height, relation: .equal, value: NSFont.systemFontSize)
       }
     }
@@ -258,6 +278,76 @@ extension SettingsPanesCocoa {
       }
     }
 
+    @IBAction
+    func exportMixTypeBackupAction(_: NSButton) {
+      guard #available(macOS 10.13, *) else {
+        SettingsPanesCocoa.warnAboutComDlg32Inavailability()
+        return
+      }
+      let panel = NSSavePanel()
+      panel.canCreateDirectories = true
+      panel.isExtensionHidden = false
+      panel.nameFieldStringValue = Self.defaultMixTypeBackupFileName()
+      if #unavailable(macOS 11) {
+        panel.allowedFileTypes = ["mixtypebackup"]
+      } else {
+        panel.allowedContentTypes = ["mixtypebackup"].compactMap {
+          .init(filenameExtension: $0)
+        }
+      }
+      panel.beginSheetModal(at: CtlSettingsCocoa.shared?.window) { result in
+        guard result == .OK, let url = panel.url else { return }
+        do {
+          try SettingsUIHost.shared.exportMixTypeBackup(url)
+          CtlSettingsCocoa.shared?.window.callAlert(
+            title: "i18n:MixType.Backup.export.success.title".i18n,
+            text: "i18n:MixType.Backup.export.success.body".i18n
+          )
+        } catch {
+          NSAlert(error: error).beginSheetModal(at: CtlSettingsCocoa.shared?.window)
+        }
+      }
+    }
+
+    @IBAction
+    func restoreMixTypeBackupAction(_: NSButton) {
+      guard #available(macOS 10.13, *) else {
+        SettingsPanesCocoa.warnAboutComDlg32Inavailability()
+        return
+      }
+      let panel = NSOpenPanel()
+      panel.canChooseFiles = true
+      panel.canChooseDirectories = false
+      panel.allowsMultipleSelection = false
+      if #unavailable(macOS 11) {
+        panel.allowedFileTypes = ["mixtypebackup"]
+      } else {
+        panel.allowedContentTypes = ["mixtypebackup"].compactMap {
+          .init(filenameExtension: $0)
+        }
+      }
+      panel.beginSheetModal(at: CtlSettingsCocoa.shared?.window) { result in
+        guard result == .OK, let url = panel.url else { return }
+        let confirmation = NSAlert()
+        confirmation.messageText = "i18n:MixType.Backup.restore.confirm.title".i18n
+        confirmation.informativeText = "i18n:MixType.Backup.restore.confirm.body".i18n
+        confirmation.addButton(withTitle: "i18n:MixType.Backup.restore.confirm.button".i18n)
+        confirmation.addButton(withTitle: "i18n:Common.Cancel".i18n)
+        confirmation.beginSheetModal(at: CtlSettingsCocoa.shared?.window) { response in
+          guard response == .alertFirstButtonReturn else { return }
+          do {
+            try SettingsUIHost.shared.restoreMixTypeBackup(url)
+            CtlSettingsCocoa.shared?.window.callAlert(
+              title: "i18n:MixType.Backup.restore.success.title".i18n,
+              text: "i18n:MixType.Backup.restore.success.body".i18n
+            )
+          } catch {
+            NSAlert(error: error).beginSheetModal(at: CtlSettingsCocoa.shared?.window)
+          }
+        }
+      }
+    }
+
     // MARK: Private
 
     private func task4ImportingKeyKeyUserDict(_ url: URL? = nil) {
@@ -279,6 +369,13 @@ extension SettingsPanesCocoa {
         let error = NSAlert(error: error)
         error.beginSheetModal(at: CtlSettingsCocoa.shared?.window)
       }
+    }
+
+    private static func defaultMixTypeBackupFileName(date: Date = Date()) -> String {
+      let formatter = DateFormatter()
+      formatter.locale = Locale(identifier: "en_US_POSIX")
+      formatter.dateFormat = "yyyyMMdd-HHmmss"
+      return "MixType-Backup-\(formatter.string(from: date)).mixtypebackup"
     }
   }
 }

@@ -753,6 +753,16 @@ final class LXMgrTests {
       type: .thePhrases,
       basePath: restoredDataFolder
     )
+    let sourceFilterURL = LXMgr.userDictDataURL(
+      mode: mode,
+      type: .theFilter,
+      basePath: sourceDataFolder
+    )
+    let restoredFilterURL = LXMgr.userDictDataURL(
+      mode: mode,
+      type: .theFilter,
+      basePath: restoredDataFolder
+    )
     let externalCassetteURL = LXMgr.unitTestDataURL(isDefaultFolder: false)
       .appendingPathComponent("portable-(UUID().uuidString).cin")
     let restoredCassetteURL = LXMgr.cassetteCacheDirectoryURL
@@ -797,6 +807,8 @@ final class LXMgrTests {
       try? fileManager.removeItem(at: restoredPersonalURL)
       try? fileManager.removeItem(at: sourcePhraseURL)
       try? fileManager.removeItem(at: restoredPhraseURL)
+      try? fileManager.removeItem(at: sourceFilterURL)
+      try? fileManager.removeItem(at: restoredFilterURL)
       try? fileManager.removeItem(at: externalCassetteURL)
       try? fileManager.removeItem(at: restoredCassetteURL)
       try? fileManager.removeItem(at: backupURL)
@@ -828,6 +840,7 @@ final class LXMgrTests {
     mode.lexicon.replacePersonalLexiconEntries([entry])
     try entryDocumentData([entry]).write(to: sourcePersonalURL, options: [.atomic])
     try Data(phraseFixture.utf8).write(to: sourcePhraseURL, options: [.atomic])
+    try? fileManager.removeItem(at: sourceFilterURL)
     try Data(cassetteFixture.utf8).write(to: externalCassetteURL, options: [.atomic])
     UserDefaults.current.set(externalCassetteURL.path, forKey: UserDef.kCassettePath.rawValue)
     UserDefaults.current.set(9, forKey: preferenceKey)
@@ -836,6 +849,9 @@ final class LXMgrTests {
     #expect(exportSummary.hasCassette)
     #expect(exportSummary.modeCount == 2)
     #expect(fileManager.isReadableFile(atPath: backupURL.path))
+    let exportedText = try String(contentsOf: backupURL, encoding: .utf8)
+    #expect(!exportedText.contains(externalCassetteURL.path))
+    #expect(!exportedText.contains(sourceDataFolder))
 
     // Simulate a new Mac: old absolute path and old user data no longer exist.
     UserDefaults.current.set(2, forKey: preferenceKey)
@@ -844,6 +860,8 @@ final class LXMgrTests {
     try fileManager.removeItem(at: sourcePersonalURL)
     try fileManager.removeItem(at: sourcePhraseURL)
     mode.lexicon.replacePersonalLexiconEntries([])
+    try Data("stale-filter-from-new-mac".utf8).write(to: restoredFilterURL, options: [.atomic])
+    #expect(fileManager.fileExists(atPath: restoredFilterURL.path))
 
     let restoreSummary = try LXMgr.restoreMixTypeBackup(from: backupURL)
     #expect(restoreSummary == exportSummary)
@@ -852,6 +870,7 @@ final class LXMgrTests {
     #expect(UserDefaults.current.string(forKey: UserDef.kCassettePath.rawValue) == restoredCassetteURL.path)
     #expect(try Data(contentsOf: restoredCassetteURL) == Data(cassetteFixture.utf8))
     #expect(try String(contentsOf: restoredPhraseURL, encoding: .utf8) == phraseFixture)
+    #expect(!fileManager.fileExists(atPath: restoredFilterURL.path))
 
     let restoredStore = LXAssembly.PersonalLexiconStore()
     try restoredStore.load(data: Data(contentsOf: restoredPersonalURL))

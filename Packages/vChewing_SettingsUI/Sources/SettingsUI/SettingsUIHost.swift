@@ -86,6 +86,12 @@ public final class SettingsUIHost {
   public var exportPersonalLexicon: (_ url: URL, _ mode: Shared.InputMode) throws -> () = { _, _ in
     throw CocoaError(.featureUnsupported)
   }
+  public var exportMixTypeBackup: (_ url: URL) throws -> () = { _ in
+    throw CocoaError(.featureUnsupported)
+  }
+  public var restoreMixTypeBackup: (_ url: URL) throws -> () = { _ in
+    throw CocoaError(.featureUnsupported)
+  }
 
   /// 語彙編輯器委派之延遲供應器（宿主注入 `{ LXMgr.shared }`）。
   /// 刻意不以值直接注入：`phraseEditorDelegate` 只在詞彙編輯頁（GUI）被使用，

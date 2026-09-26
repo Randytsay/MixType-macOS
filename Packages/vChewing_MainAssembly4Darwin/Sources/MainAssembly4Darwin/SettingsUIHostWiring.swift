@@ -62,6 +62,14 @@ extension SettingsUIHost {
     host.exportPersonalLexicon = { url, mode in
       try LXMgr.exportPersonalLexicon(to: url, mode: mode)
     }
+    host.exportMixTypeBackup = { url in
+      _ = try LXMgr.exportMixTypeBackup(to: url)
+    }
+    host.restoreMixTypeBackup = { url in
+      _ = try LXMgr.restoreMixTypeBackup(from: url)
+      AppDelegate.shared.updateDirectoryMonitorPath()
+      SessionUI.shared.resyncShiftKeyUpCheckerSettings()
+    }
     // 以 provider 延遲注入：LXMgr.shared 僅在詞彙編輯頁真正開啟時才實體化，
     // 避免程序啟動階段就武裝其 KVO 路徑失效觀察器。
     host.phraseEditorDelegateProvider = { LXMgr.shared }

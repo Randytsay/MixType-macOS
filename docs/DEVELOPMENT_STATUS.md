@@ -4,7 +4,7 @@ This file is the canonical handoff/status record for active MixType development.
 
 ## Current milestone
 
-**V0.3 — mixed-token segmentation**
+**V0.4 — Portable Backup / Restore**
 
 Specifications:
 
@@ -13,7 +13,25 @@ Specifications:
 
 ## Current phase
 
-**V0.3 Phase A — acceptance complete**
+**V0.4 Phase A — portable personal backup / restore implemented and validated**
+
+V0.3.0 remains the released baseline (`mixtype-v0.3.0`). V0.4 adds a portable, versioned
+`.mixtypebackup` format so a new Mac can restore the user's MixType environment without copying old
+absolute paths. The backup includes portable preferences, the active CIN/cassette file bytes and filename,
+CHT/CHS Personal Lexicon, Auto Promotion pending observations, composition-learning pending observations,
+single-character preferences, existing user phrases, filters, replacements, associated phrases, user
+symbols, and `symbols.dat`. Transient POM/perception memory is intentionally excluded from schema v1.
+
+Restore is replacement-oriented and fail-closed: the document and versioned learning stores are validated
+before mutation; known portable roles absent from the backup remove stale destination files; preferences
+and existing destination files are snapshotted for rollback; and CIN is restored into the new Mac's
+internal cassette cache rather than reusing the old machine's absolute path. `CassettePath` and
+`UserDataFolderSpecified` are never exported through the preferences payload. Regression coverage
+confirms the serialized backup does not contain the old cassette or user-data absolute paths.
+
+Both SwiftUI and Cocoa Settings panes expose “Export Complete Backup” and “Restore Complete Backup”.
+Restore presents an explicit replacement confirmation first. Four UI localizations (English,
+Traditional Chinese, Simplified Chinese, Japanese) are present and lint clean.
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -118,6 +136,17 @@ data. Digit-leading time/unit tokens and e-mail/URL tokens retain their accepted
 - V0.3 Phase A mixed-token feature flag: ✅ introduced default-off for rollout safety, graduated default-on for release
 - protected ASCII token routing in the existing Hybrid typewriter (no second typewriter / no LLM / no network): ✅
 - case-sensitive / alphanumeric token preservation (`MacBookM6`, `ABC123`, `server2026`, `SOC80%`): ✅ focused regression
+- V0.4 versioned portable `.mixtypebackup` schema v1: ✅
+- portable preferences + active CIN/cassette + CHT/CHS Personal / promotion / composition / single-character learning data: ✅
+- existing user phrases / filters / replacements / associates / user-symbol data included as opaque bytes: ✅
+- old `CassettePath` / `UserDataFolderSpecified` absolute paths excluded from the backup: ✅ regression
+- restore relocates CIN into the new Mac's internal cassette cache and portable user data into the local default data folder: ✅ regression
+- exact restore semantics remove stale known-role files that are absent from the backup: ✅ regression
+- malformed backup fail-closed without changing current preferences/data: ✅ regression
+- restore rollback snapshots preferences and destination files: ✅
+- SwiftUI + Cocoa complete-backup export/restore UI with destructive-restore confirmation: ✅
+- backup/restore localization EN / zh-Hant / zh-Hans / JA: ✅ lint
+- V0.4 validation: MainAssembly 43 tests PASS; SettingsUI 17/17 PASS; full LibVanguard PASS; `make debug` PASS; `git diff --check` PASS
 - e-mail / URL token preservation (`email@example.com`, `https://example.com/path?q=1`): ✅ focused regression
 - adjacent English→Pinyin split without auto-selection (`今天meetinggai` → commit `今天meeting`, keep `gai` candidates): ✅ focused regression
 - valid-Pinyin anti-split guards (`nengliu`, `taidagai`) and protected-token atomicity: ✅ focused regression
@@ -429,13 +458,13 @@ PASS, and `make debug` passes.
 Update this section whenever a work batch is handed to another agent/environment:
 
 ```text
-Current branch: feat/mixed-token-v03
-Latest V0.3 commit: 630ed0a0 (Batch 5 CIN punctuation-code precedence)
-Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batches 1–5 complete — protected ASCII tokens, adjacent English→Pinyin boundary split, digit-leading literal time/unit handling, continuous Pinyin→English(/→Pinyin) candidates, and CIN punctuation-code precedence
-Tests: full LibVanguard package tests PASS (including IH533-IH545); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS with LXMgr 28/28 PASS; `make debug` PASS; `git diff --check` PASS.
-CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; `server2026` PASS; `jintianmeetinggai → 今天meeting改` PASS; private-CIN `s. → ？` PASS; latest V0.3 Debug IME installed with strict codesign verification after bundle backup; OpenVanilla preserved; private Personal / explicit-promotion pending / composition pending / single-character preference / CIN file hashes unchanged
-Known issues: no blocker in the accepted V0.1/V0.2/V0.3 Phase A scope. The mixed-token preference is default-on for release while remaining explicitly disable-able. CoS Mac still lacks Accessibility keyboard-event injection, but the required Phase A real-client checks were completed manually.
-Release: `mixtype-v0.3.0` published from `ee2fff27` on 2026-09-26. The attached universal installer is arm64 + x86_64, ad-hoc signed, and explicitly unnotarized because the release Mac has no Developer ID signing identity. SHA-256: `24da8f23e8dd8e9e3232378e8b90d4dd331a2828a9883dd1af693d8b8ca5dfdd`.
-Next unfinished item: V0.3.0 is released. Any subsequent feature work is a new V0.3 phase / maintenance release rather than unfinished Phase A implementation.
+Current branch: feat/backup-restore-v04
+Released baseline: `mixtype-v0.3.0` from `ee2fff27` (universal arm64 + x86_64, ad-hoc signed, explicitly unnotarized)
+Latest V0.4 core commit: `064d02ef` (portable backup / restore core)
+Completed in current V0.4 working batch: schema-v1 backup package; portable preferences; CIN relocation; CHT/CHS Personal / promotion / composition / single-character learning payloads; legacy user-data payloads; exact restore semantics; rollback/fail-closed validation; SwiftUI + Cocoa export/restore UI; four localizations
+Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; MainAssembly 43/43 PASS including backup round-trip + malformed-package fail-closed regressions; four localization files lint PASS; `make debug` PASS; `git diff --check` PASS.
+Privacy: no private CIN, Personal Lexicon, pending-learning, or preference-data file is committed. Backup files are created locally only when the user explicitly exports them.
+Portability: backup regression proves old cassette and user-data absolute paths are absent; restore writes to the new Mac's default portable locations and internal cassette cache.
+Known limitation: schema v1 intentionally excludes transient POM/perception memory and does not register a Finder document type for `.mixtypebackup`; Settings open/save panels recognize the extension directly.
+Next unfinished item: commit/push the V0.4 UI + hardening batch, install the validated Debug IME after preserving current private-data hashes, then perform a non-destructive real-Mac export sanity from Settings.
 ```
