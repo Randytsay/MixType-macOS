@@ -466,5 +466,7 @@ Tests: full LibVanguard package tests PASS; SettingsUI 17/17 PASS; MainAssembly 
 Privacy: no private CIN, Personal Lexicon, pending-learning, or preference-data file is committed. Backup files are created locally only when the user explicitly exports them.
 Portability: backup regression proves old cassette and user-data absolute paths are absent; restore writes to the new Mac's default portable locations and internal cassette cache.
 Known limitation: schema v1 intentionally excludes transient POM/perception memory and does not register a Finder document type for `.mixtypebackup`; Settings open/save panels recognize the extension directly.
-Next unfinished item: commit/push the V0.4 UI + hardening batch, install the validated Debug IME after preserving current private-data hashes, then perform a non-destructive real-Mac export sanity from Settings.
+Mac runtime install: V0.4 Debug IME installed after backing up the previous bundle. Strict codesign PASS; OpenVanilla remained present; 15 known portable/private data files (including the active CIN and MixType learning/user-data roles) were hash-compared before/after and are unchanged.
+Latest V0.4 UI/hardening commit: `db53f354` — complete Backup / Restore UI, exact restore semantics, localization, and portability regressions.
+Next unfinished item: perform a non-destructive real-Mac “Export Complete Backup” sanity from Settings. Do not perform a real-data restore merely for acceptance; restore semantics are already covered by the isolated round-trip/fail-closed regression.
 ```
