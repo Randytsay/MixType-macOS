@@ -9,11 +9,11 @@ This file is the canonical handoff/status record for active MixType development.
 Specifications:
 
 - `docs/MIXTYPE_V0.1_HYBRID_PLAN.md` — V0.1 accepted baseline
-- `docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md` — active milestone
+- `docs/MIXTYPE_V0.2_PERSONAL_LEXICON_PLAN.md` — accepted V0.2 baseline
 
 ## Current phase
 
-**V0.3 Phase A — protected ASCII token routing behind a default-off feature flag**
+**V0.3 Phase A — deterministic mixed-token segmentation in the accepted Hybrid route**
 
 The clean Mac baseline and V0.1 installed-IME runtime acceptance have passed, including real
 Cassette/CIN input, full Pinyin, abbreviated Pinyin, numeric candidate selection, and ordinary digits.
@@ -43,7 +43,11 @@ and common URL/unit punctuation can remain in the Hybrid raw buffer without bein
 accidental Chinese-candidate routing. With the flag off, V0.2 behavior is unchanged. Batch 2 adds
 conservative adjacent English→Pinyin boundary splitting: the ASCII prefix must have strong English evidence,
 the suffix must have a real full/composed Pinyin source, and the Chinese suffix remains in the candidate UI
-for explicit confirmation rather than being auto-selected. Digit-leading units/time remain subsequent work.
+for explicit confirmation rather than being auto-selected. Batch 3 adds a bounded runtime context for digits
+that have already been passed through to the client, allowing deterministic digit-leading time/unit tokens
+such as `3pm`, `20kW`, and `300RT` to finish as literal ASCII without re-committing the digits. The
+numeric context is cleared on normal commit/reset and explicit Chinese selection, while unrecognized
+digit-leading suffixes remain eligible for Chinese Pinyin candidates (for example `3nihao → 3你好`).
 
 ## Repository state
 
@@ -109,6 +113,9 @@ for explicit confirmation rather than being auto-selected. Digit-leading units/t
 - e-mail / URL token preservation (`email@example.com`, `https://example.com/path?q=1`): ✅ focused regression
 - adjacent English→Pinyin split without auto-selection (`今天meetinggai` → commit `今天meeting`, keep `gai` candidates): ✅ focused regression
 - valid-Pinyin anti-split guards (`nengliu`, `taidagai`) and protected-token atomicity: ✅ focused regression
+- digit-leading literal time/unit flow (`3pm`, `20kW`, `300RT`) without duplicated passthrough digits: ✅ focused regression
+- chained mixed-token flow (`今天meeting改3pm`) preserves Chinese / English / Chinese / numeric-unit boundaries: ✅ focused regression
+- digit-leading non-unit Pinyin remains selectable as Chinese (`3nihao → 3你好`): ✅ focused regression
 
 ## Mac baseline reconciliation — 2026-09-25
 
@@ -145,7 +152,8 @@ for explicit confirmation rather than being auto-selected. Digit-leading units/t
 1. V0.2 final hardening build installation: ✅ complete with strict codesign verification and private runtime data preserved.
 2. Final Mac sanity: ✅ complete. Existing real-Mac evidence already covers Shift-ASCII / explicit English override; the final provider-state pass verified Zhuyin → Pinyin → CIN transitions against the installed input source and restored the original CIN/Hybrid preferences afterward.
 3. Learned runtime data sanity: ✅ `韋宏 = weihong / wh`, `過來一下 = guolaiyixia / glyx`, and the learned `耀` single-character preference remain persisted after the final hardening install.
-4. V0.2 is acceptance complete. V0.3 Phase A Batch 1 is committed/pushed; Batch 2 adjacent English→Pinyin segmentation is implemented and entering its full validation gate.
+4. V0.2 is acceptance complete. V0.3 Phase A Batches 1–3 are committed/pushed; protected ASCII, adjacent English→Pinyin splitting, and digit-leading unit/time handling have all passed the full relevant validation gate.
+5. The Batch 3 Debug IME is installed after backing up the previous bundle; strict codesign passes, OpenVanilla remains present, and private CIN / Personal / learning file hashes are unchanged. The V0.3 feature flag remains default-off for runtime safety.
 
 ## V0.2 implementation status
 
@@ -192,7 +200,7 @@ for explicit confirmation rather than being auto-selected. Digit-leading units/t
 - [x] V0.3 protected e-mail / URL tokens
 - [x] V0.3 adjacent Chinese → ASCII flow through existing assembler + Hybrid raw buffer
 - [x] V0.3 adjacent ASCII → Pinyin boundary split with explicit Chinese candidate confirmation
-- [ ] V0.3 digit-leading unit/time tokens (`3pm`, `20kW`, `300RT`) as one deterministic mixed-token flow
+- [x] V0.3 digit-leading unit/time tokens (`3pm`, `20kW`, `300RT`) as one deterministic mixed-token flow
 
 ## V0.1 phase checklist
 
@@ -406,11 +414,11 @@ Update this section whenever a work batch is handed to another agent/environment
 
 ```text
 Current branch: feat/mixed-token-v03
-Latest V0.3 commit: 80971da7 (Batch 1)
-Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batch 1 protected ASCII tokens committed/pushed; Batch 2 adjacent English→Pinyin boundary split implemented without automatic candidate selection
-Tests: Batch 2 full LibVanguard package tests PASS (including IH534-IH537); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS; `make debug` PASS; `git diff --check` PASS.
+Latest V0.3 commit: 0da1c909 (Batch 3 digit-leading mixed tokens)
+Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batch 1 protected ASCII tokens; Batch 2 adjacent English→Pinyin boundary split without automatic candidate selection; Batch 3 digit-leading literal time/unit handling with non-unit Pinyin escape hatch
+Tests: full LibVanguard package tests PASS (including IH533-IH540); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS with LXMgr 28/28 PASS; `make debug` PASS; `git diff --check` PASS.
 CI: no GitHub Actions run observed for the latest V0.2 feature work
-Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; mixed-Pinyin, composition-learning, composed-Pinyin N-best, and final learning-quality hardening builds installed with strict codesign verification; existing Personal / explicit-promotion pending / composition pending / single-character preference / private CIN data all preserved
-Known issues: no V0.2 blocker. V0.3 still needs digit-leading unit/time handling (`3pm`, `20kW`, `300RT`).
-Next unfinished item: validate/commit/push V0.3 Phase A Batch 2, then finish digit-leading mixed-token handling in the same Hybrid route
+Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; V0.3 Batch 3 Debug IME installed with strict codesign verification after bundle backup; OpenVanilla preserved; private Personal / explicit-promotion pending / composition pending / single-character preference / CIN file hashes unchanged
+Known issues: no V0.2 blocker. V0.3 Phase A code/test gate is green; the new mixed-token feature remains default-off, so real-client typing sanity for the new V0.3 examples is still an explicit activation/runtime acceptance step rather than an automatic behavior change.
+Next unfinished item: perform the short real-client V0.3 Phase A sanity with the feature flag explicitly enabled, then decide whether to graduate the flag or continue to the next V0.3 acceptance batch.
 ```
