@@ -674,7 +674,7 @@ extension UserDef {
     case .kMixTypeAutoPromotionEnabled: return .bool(true)
     case .kMixTypeAutoPromotionThreshold: return .integer(3)
     case .kMixTypeEnglishIntentEnabled: return .bool(true)
-    case .kMixTypeMixedTokenSegmentationEnabled: return .bool(false)
+    case .kMixTypeMixedTokenSegmentationEnabled: return .bool(true)
     case .kMixedAlphanumericalEnabled: return .bool(false)
     case .kMixedAlnumJudgeReadingsBySequentialRawKeyOrder: return .bool(true)
     case .kEnableLatchedAlnumStateInMixedAlnumMode: return .bool(false)

@@ -795,11 +795,19 @@ extension LibVanguardTestsRoot.InputHandlerTests {
       return
     }
 
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
+    defer {
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
+      testHandler.clear()
+      testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    }
+
     testHandler.clear()
     testSession.resetInputHandler(forceComposerCleanup: true)
     testHandler.prefs.cassetteEnabled = true
     testHandler.prefs.hybridCassettePinyinEnabled = true
     testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = false
     testHandler.ensureKeyboardParser()
     testHandler.currentLM.syncPrefs()
 
@@ -822,9 +830,11 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     }
 
     let originalAsyncLoading = LXAssembly.LXFacade.asyncLoadingUserData
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
     LXAssembly.LXFacade.asyncLoadingUserData = false
     defer {
       LXAssembly.LXFacade.asyncLoadingUserData = originalAsyncLoading
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
       testHandler.clear()
       testSession.resetInputHandler(forceComposerCleanup: true)
     }
@@ -839,6 +849,7 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     testHandler.prefs.cassetteEnabled = true
     testHandler.prefs.hybridCassettePinyinEnabled = true
     testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = false
     testHandler.ensureKeyboardParser()
     testHandler.currentLM.syncPrefs()
 
@@ -1587,12 +1598,14 @@ extension LibVanguardTestsRoot.InputHandlerTests {
   }
 
   @Test
-  func test_IH533_MixedTokenSegmentationDefaultsOffAndKeepsV02ShiftBehavior() throws {
+  func test_IH533_MixedTokenSegmentationDefaultsOnAndFlagOffKeepsV02ShiftBehavior() throws {
     guard let testHandler, let testSession else {
       Issue.record("Test handler or session is nil.")
       return
     }
+    let oldFlag = testHandler.prefs.mixTypeMixedTokenSegmentationEnabled
     defer {
+      testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = oldFlag
       testHandler.clear()
       testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
     }
@@ -1601,13 +1614,31 @@ extension LibVanguardTestsRoot.InputHandlerTests {
     testHandler.prefs.hybridCassettePinyinEnabled = true
     testHandler.prefs.keyboardParser = KeyboardParser.ofHanyuPinyin.rawValue
     testHandler.ensureKeyboardParser()
-    #expect(!testHandler.prefs.mixTypeMixedTokenSegmentationEnabled)
+    #expect(testHandler.prefs.mixTypeMixedTokenSegmentationEnabled)
 
     let shiftM = KBEvent.KeyEventData(
       flags: .shift, chars: "M", charsSansModifiers: "m", keyCode: 46
     ).asEvent
     #expect(testHandler.triageInput(event: shiftM))
-    #expect(testSession.recentCommissions.joined() == "M")
+    #expect(testSession.recentCommissions.isEmpty)
+    #expect(testHandler.calligrapher == "M")
+
+    // Bare shifted punctuation still keeps its visible ASCII semantics with V0.3 on.
+    testHandler.clear()
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    let shift2 = KBEvent.KeyEventData(
+      flags: .shift, chars: "@", charsSansModifiers: "2", keyCode: 19
+    ).asEvent
+    #expect(testHandler.triageInput(event: shift2))
+    #expect(testSession.recentCommissions.joined() == "@")
+    #expect(testHandler.calligrapher.isEmpty)
+
+    // Explicitly disabling the feature restores the accepted V0.2 uppercase behavior.
+    testHandler.clear()
+    testSession.resetInputHandler(forceComposerCleanup: true, commitExisting: false)
+    testHandler.prefs.mixTypeMixedTokenSegmentationEnabled = false
+    #expect(testHandler.triageInput(event: shiftM))
+    #expect(testSession.recentCommissions.last == "M")
     #expect(testHandler.calligrapher.isEmpty)
   }
 

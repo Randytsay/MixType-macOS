@@ -36,11 +36,12 @@ auto-promote with an exact reading chain that the factory itself supports, while
 remain learnable from their actual composition readings. The check is lazy-cached and invalidated whenever
 the factory dictionary reloads, so it does not enter the per-key hot path.
 
-V0.3 Phase A keeps the accepted Hybrid typewriter as the single authoritative event route. Batch 1 adds
-a default-off `MixTypeMixedTokenSegmentationEnabled` preference and deterministic protected-ASCII handling
+V0.3 Phase A keeps the accepted Hybrid typewriter as the single authoritative event route. Batch 1 added
+an initially default-off `MixTypeMixedTokenSegmentationEnabled` preference and deterministic protected-ASCII handling
 inside that route only. Case-sensitive model names / acronyms, English+digit tokens, e-mail addresses, URLs,
 and common URL/unit punctuation can remain in the Hybrid raw buffer without being split by Shift-ASCII or
-accidental Chinese-candidate routing. With the flag off, V0.2 behavior is unchanged. Batch 2 adds
+accidental Chinese-candidate routing. The flag-off path still preserves V0.2 behavior, but after Phase A
+acceptance the preference was graduated to default-on for the `mixtype-v0.3.0` release. Batch 2 adds
 conservative adjacent English→Pinyin boundary splitting: the ASCII prefix must have strong English evidence,
 the suffix must have a real full/composed Pinyin source, and the Chinese suffix remains in the candidate UI
 for explicit confirmation rather than being auto-selected. Batch 3 adds a bounded runtime context for digits
@@ -114,7 +115,7 @@ data. Digit-leading time/unit tokens and e-mail/URL tokens retain their accepted
 - auto-promotion threshold factory-reading gate rejects unsupported readings for known factory phrases while preserving legitimate multi-reading variants: ✅
 - exact-reading lookup is lazy-cached and cache invalidates on factory reload: ✅
 - final sequential-selection acceptance: `wei → 韋`, then `hong → 宏`, commit `韋宏` three times ⇒ Personal `weihong / wh`: ✅
-- V0.3 Phase A Batch 1 default-off mixed-token feature flag: ✅ code + focused regression
+- V0.3 Phase A mixed-token feature flag: ✅ introduced default-off for rollout safety, graduated default-on for release
 - protected ASCII token routing in the existing Hybrid typewriter (no second typewriter / no LLM / no network): ✅
 - case-sensitive / alphanumeric token preservation (`MacBookM6`, `ABC123`, `server2026`, `SOC80%`): ✅ focused regression
 - e-mail / URL token preservation (`email@example.com`, `https://example.com/path?q=1`): ✅ focused regression
@@ -164,7 +165,7 @@ data. Digit-leading time/unit tokens and e-mail/URL tokens retain their accepted
 2. Final Mac sanity: ✅ complete. Existing real-Mac evidence already covers Shift-ASCII / explicit English override; the final provider-state pass verified Zhuyin → Pinyin → CIN transitions against the installed input source and restored the original CIN/Hybrid preferences afterward.
 3. Learned runtime data sanity: ✅ `韋宏 = weihong / wh`, `過來一下 = guolaiyixia / glyx`, and the learned `耀` single-character preference remain persisted after the final hardening install.
 4. V0.2 is acceptance complete. V0.3 Phase A Batches 1–5 are committed/pushed; protected ASCII, adjacent and continuous English/Pinyin segmentation, digit-leading unit/time handling, and CIN punctuation-code precedence have all passed the full relevant validation gate.
-5. The latest V0.3 Debug IME is installed after backing up the previous bundle; strict codesign passes, OpenVanilla remains present, and private CIN / Personal / learning file hashes are unchanged. The preference remains default-off in code, while the current acceptance Mac has explicitly enabled it for runtime validation.
+5. The latest V0.3 Debug IME is installed after backing up the previous bundle; strict codesign passes, OpenVanilla remains present, and private CIN / Personal / learning file hashes are unchanged. After acceptance, the mixed-token preference is default-on for the first public MixType V0.3 release; users may still explicitly disable it.
 6. V0.3 Phase A real-client acceptance: ✅ `server2026`, `今天meeting改`, and private-CIN punctuation code `s. → ？` were verified on the installed IME.
 
 ## V0.2 implementation status
@@ -207,7 +208,7 @@ data. Digit-leading time/unit tokens and e-mail/URL tokens retain their accepted
 - [x] legitimate factory multi-reading variants remain promotable
 - [x] exact-reading validation cache + factory-reload invalidation
 - [x] sequential single-character composition regression (`wei → 韋`, `hong → 宏` ×3 ⇒ `weihong / wh`)
-- [x] V0.3 default-off mixed-token routing flag
+- [x] V0.3 mixed-token routing flag, graduated from default-off rollout to default-on release behavior
 - [x] V0.3 protected ASCII model/acronym/alphanumeric tokens
 - [x] V0.3 protected e-mail / URL tokens
 - [x] V0.3 adjacent Chinese → ASCII flow through existing assembler + Hybrid raw buffer
@@ -434,6 +435,6 @@ Completed: V0.1 runtime acceptance; V0.2 acceptance complete; V0.3 Phase A Batch
 Tests: full LibVanguard package tests PASS (including IH533-IH545); SettingsUI 17/17 PASS; MainAssembly 41/41 PASS with LXMgr 28/28 PASS; `make debug` PASS; `git diff --check` PASS.
 CI: no GitHub Actions run observed for the latest V0.2 feature work
 Mac runtime validation: private CIN PASS; full/abbreviated Pinyin PASS; numeric selection/digit passthrough PASS; local `台達能源` Personal E2E PASS; explicit English override and Shift-ASCII PASS; `卉羚 → huiling / hl` data repair PASS; `server2026` PASS; `jintianmeetinggai → 今天meeting改` PASS; private-CIN `s. → ？` PASS; latest V0.3 Debug IME installed with strict codesign verification after bundle backup; OpenVanilla preserved; private Personal / explicit-promotion pending / composition pending / single-character preference / CIN file hashes unchanged
-Known issues: no blocker in the accepted V0.1/V0.2/V0.3 Phase A scope. The mixed-token preference is still default-off in code for rollout safety; it is explicitly enabled on the current acceptance Mac. CoS Mac still lacks Accessibility keyboard-event injection, but the required Phase A real-client checks were completed manually.
-Next unfinished item: V0.3 Phase A is acceptance complete. Any further work is a new V0.3 phase / rollout decision rather than unfinished Phase A implementation.
+Known issues: no blocker in the accepted V0.1/V0.2/V0.3 Phase A scope. The mixed-token preference is default-on for release while remaining explicitly disable-able. CoS Mac still lacks Accessibility keyboard-event injection, but the required Phase A real-client checks were completed manually.
+Next unfinished item: publish `mixtype-v0.3.0` from the accepted branch, then treat any subsequent feature work as a new V0.3 phase.
 ```
